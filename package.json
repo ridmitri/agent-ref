@@ -1,0 +1,121 @@
+{
+  "name": "agent-ref",
+  "displayName": "Agent Reference",
+  "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "icon": "./resources/icon.png",
+  "license": "./LICENCE",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentRef.copySend",
+        "title": "Agent Ref: Copy and Send Reference"
+      },
+      {
+        "command": "agentRef.copyOnly",
+        "title": "Agent Ref: Copy Reference Only"
+      },
+      {
+        "command": "agentRef.sendOnly",
+        "title": "Agent Ref: Send to Terminal Only"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "agentRef.sendOnly",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Reference",
+      "properties": {
+        "agentRef.format": {
+          "type": "string",
+          "enum": [
+            "universal",
+            "claude",
+            "abs",
+            "markdown"
+          ],
+          "default": "universal",
+          "description": "Output format for file references",
+          "enumDescriptions": [
+            "rel/path/file.ts:120-137 (works everywhere)",
+            "@rel/path/file.ts#120-137 (Claude-friendly)",
+            "/abs/path/file.ts:120-137 (absolute path)",
+            "`rel/path/file.ts:120-137` (markdown backticks)"
+          ]
+        },
+        "agentRef.pathStyle": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "relative",
+            "absolute"
+          ],
+          "default": "auto",
+          "description": "Path style preference",
+          "enumDescriptions": [
+            "Use relative when possible, else absolute",
+            "Always use workspace-relative paths",
+            "Always use absolute paths"
+          ]
+        },
+        "agentRef.copyToClipboard": {
+          "type": "boolean",
+          "default": true,
+          "description": "Copy reference to clipboard"
+        },
+        "agentRef.terminal.focus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Focus terminal after sending reference"
+        },
+        "agentRef.terminal.send": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send reference to terminal input"
+        },
+        "agentRef.terminal.addNewLine": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add newline when sending to terminal"
+        },
+        "agentRef.terminal.name": {
+          "type": "string",
+          "default": "Agent",
+          "description": "Name for the terminal to create/use"
+        },
+        "agentRef.includeColumnRange": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include column numbers in reference (e.g., :120:5-137:20)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
