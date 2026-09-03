@@ -2,7 +2,12 @@
   "name": "agent-ref",
   "displayName": "Agent Reference",
   "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
-  "version": "1.0.0",
+  "version": "1.0.16-alpha.8",
+  "publisher": "ridmitri",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ridmitri/agent-ref.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -26,50 +31,106 @@
       {
         "command": "agentRef.sendOnly",
         "title": "Agent Ref: Send to Terminal Only"
+      },
+      {
+        "command": "agentRef.sendToCodex",
+        "title": "Open in Codex"
+      },
+      {
+        "command": "agentRef.sendToOpenCode",
+        "title": "Open in OpenCode"
+      },
+      {
+        "command": "agentRef.sendToClaudeCode",
+        "title": "Open in Claude Code"
+      },
+      {
+        "command": "agentRef.sendToCursor",
+        "title": "Open in Cursor"
+      },
+      {
+        "command": "agentRef.openTerminalFile",
+        "title": "Agent Ref: Open File for Terminal"
       }
     ],
+    "submenus": [
+      {
+        "id": "agentRef.sendToAgent",
+        "label": "Select Agent"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "agentRef.sendToAgent",
+          "when": "resourceScheme == file",
+          "group": "agentRef@1"
+        },
+        {
+          "command": "agentRef.sendToCodex",
+          "when": "resourceScheme == file && agentRef.showCodexInTopLevelMenu",
+          "group": "agentRef@2"
+        },
+        {
+          "command": "agentRef.sendToOpenCode",
+          "when": "resourceScheme == file && agentRef.showOpenCodeInTopLevelMenu",
+          "group": "agentRef@3"
+        },
+        {
+          "command": "agentRef.sendToClaudeCode",
+          "when": "resourceScheme == file && agentRef.showClaudeCodeInTopLevelMenu",
+          "group": "agentRef@4"
+        },
+        {
+          "command": "agentRef.sendToCursor",
+          "when": "resourceScheme == file && agentRef.showCursorInTopLevelMenu",
+          "group": "agentRef@5"
+        }
+      ],
+      "agentRef.sendToAgent": [
+        {
+          "command": "agentRef.sendToCodex",
+          "when": "resourceScheme == file",
+          "group": "agent@1"
+        },
+        {
+          "command": "agentRef.sendToOpenCode",
+          "when": "resourceScheme == file",
+          "group": "agent@2"
+        },
+        {
+          "command": "agentRef.sendToClaudeCode",
+          "when": "resourceScheme == file",
+          "group": "agent@3"
+        },
+        {
+          "command": "agentRef.sendToCursor",
+          "when": "resourceScheme == file",
+          "group": "agent@4"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "agentRef.sendOnly",
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "agentRef.openTerminalFile",
+        "key": "ctrl+cmd+e",
+        "mac": "cmd+ctrl+e",
+        "when": "terminalFocus"
       }
     ],
     "configuration": {
       "title": "Agent Reference",
       "properties": {
-        "agentRef.format": {
+        "agentRef.workingDirectory": {
           "type": "string",
-          "enum": [
-            "universal",
-            "claude",
-            "abs",
-            "markdown"
-          ],
-          "default": "universal",
-          "description": "Output format for file references",
-          "enumDescriptions": [
-            "rel/path/file.ts:120-137 (works everywhere)",
-            "@rel/path/file.ts#120-137 (Claude-friendly)",
-            "/abs/path/file.ts:120-137 (absolute path)",
-            "`rel/path/file.ts:120-137` (markdown backticks)"
-          ]
-        },
-        "agentRef.pathStyle": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "relative",
-            "absolute"
-          ],
-          "default": "auto",
-          "description": "Path style preference",
-          "enumDescriptions": [
-            "Use relative when possible, else absolute",
-            "Always use workspace-relative paths",
-            "Always use absolute paths"
-          ]
+          "default": "",
+          "description": "Working directory for agent terminal sessions. If unset or empty, falls back to the selected folder or the parent folder of the selected file. Can be set in VS Code workspace configuration."
         },
         "agentRef.copyToClipboard": {
           "type": "boolean",
@@ -100,6 +161,31 @@
           "type": "boolean",
           "default": false,
           "description": "Include column numbers in reference (e.g., :120:5-137:20)"
+        },
+        "agentRef.prompt": {
+          "type": "string",
+          "default": "For this session, \"the path\" refers to \"<PATH>\". Do not inspect it yet; wait for a later request.",
+          "description": "Prompt sent to the selected agent. Use <PATH> to insert the selected file or folder path."
+        },
+        "agentRef.showCodexInTopLevelMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Codex in Top Level Menu"
+        },
+        "agentRef.showOpenCodeInTopLevelMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show OpenCode in Top Level Menu"
+        },
+        "agentRef.showClaudeCodeInTopLevelMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Claude Code in Top Level Menu"
+        },
+        "agentRef.showCursorInTopLevelMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Cursor in Top Level Menu"
         }
       }
     }
@@ -107,8 +193,11 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "package:extension": "mkdir -p build && npx @vscode/vsce package --out build/agent-ref-$npm_package_version.vsix",
+    "test": "npm run compile && node --test test/*.test.js",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "typecheck": "tsc --noEmit -p ./"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",

@@ -1,5 +1,11 @@
 .vscode
 .vscode-test
+.work
+.github
+.eslintrc.json
+scripts
+node_modules
 src
+test
 tsconfig.json
 *.vsix

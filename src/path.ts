@@ -1,61 +1,58 @@
-import * as vscode from 'vscode';
+import * as fs from 'fs';
 import * as path from 'path';
-
-export type PathStyle = 'auto' | 'relative' | 'absolute';
-
-export type ResolvedPath = {
-  path: string;
-  isRelative: boolean;
-};
+import type * as vscode from 'vscode';
 
 /**
- * Resolve file path based on workspace and settings
- * Returns workspace-relative path when possible, normalized with forward slashes
+ * Resolve a URI to its normalized absolute filesystem path.
+ *
+ * Editor references deliberately use one path contract regardless of the
+ * workspace or any user settings. Forward slashes keep the resulting
+ * reference portable for terminal-based agents.
  */
-export function resolvePath(
-  uri: vscode.Uri,
-  pathStyle: PathStyle = 'auto'
-): ResolvedPath {
-  const absolutePath = uri.fsPath;
+export function resolvePath(uri: vscode.Uri): string {
+  return normalizePath(path.resolve(uri.fsPath));
+}
 
-  // If absolute style requested, return it directly
-  if (pathStyle === 'absolute') {
-    return {
-      path: normalizePath(absolutePath),
-      isRelative: false
-    };
+/**
+ * Resolve the working directory for an agent terminal session.
+ *
+ * If `configuredWorkingDir` is specified (non-empty string):
+ * - If it is relative and `workspaceRoot` is provided, resolves relative to `workspaceRoot`.
+ * - Otherwise, resolves it to an absolute path.
+ *
+ * If `configuredWorkingDir` is empty or undefined:
+ * - Falls back to the directory of `targetPath`. If `targetPath` is a directory, returns it directly;
+ *   if it is a file (or doesn't exist as a directory), returns its parent directory `path.dirname(targetPath)`.
+ */
+export function resolveWorkingDirectory(
+  targetPath: string,
+  configuredWorkingDir?: string,
+  workspaceRoot?: string
+): string {
+  const trimmed = configuredWorkingDir?.trim();
+  if (trimmed) {
+    if (!path.isAbsolute(trimmed) && workspaceRoot) {
+      return normalizePath(path.resolve(workspaceRoot, trimmed));
+    }
+    return normalizePath(path.resolve(trimmed));
   }
 
-  // Try to get workspace-relative path
-  const wsFolder = vscode.workspace.getWorkspaceFolder(uri);
-
-  if (wsFolder) {
-    const relativePath = path.relative(wsFolder.uri.fsPath, absolutePath);
-    return {
-      path: normalizePath(relativePath),
-      isRelative: true
-    };
+  const normalizedTarget = path.resolve(targetPath);
+  try {
+    const stats = fs.statSync(normalizedTarget);
+    if (stats.isDirectory()) {
+      return normalizePath(normalizedTarget);
+    }
+  } catch {
+    // If stat fails (e.g. file doesn't exist yet on disk), fallback to dirname
   }
 
-  // No workspace folder found
-  if (pathStyle === 'relative') {
-    // Relative requested but no workspace - use basename
-    return {
-      path: normalizePath(path.basename(absolutePath)),
-      isRelative: true
-    };
-  }
-
-  // Auto mode: fall back to absolute
-  return {
-    path: normalizePath(absolutePath),
-    isRelative: false
-  };
+  return normalizePath(path.dirname(normalizedTarget));
 }
 
 /**
  * Normalize path to use forward slashes (better for AI agents)
  */
-function normalizePath(filePath: string): string {
+export function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
 }

@@ -1,13 +1,15 @@
 # Agent Reference - VS Code Extension
 
-Quickly copy and send file references to AI coding agents like Claude Code, Cursor, and others.
+Quickly copy and send absolute file references to AI coding agents, or launch an agent for a local Explorer resource.
 
 ## Features
 
 - **Single hotkey** to create file references with line numbers
-- **Multiple output formats** for different AI tools
+- **Absolute-path references** with one deterministic format
 - **Clipboard + Terminal integration** for seamless workflow
-- **Workspace-relative paths** by default
+- **Explorer context menu** for Codex, OpenCode, Claude Code, and Cursor
+- **Configurable prompts** and optional direct top-level menu actions
+- **Terminal-title file opening** (`Cmd+Ctrl+E`) to jump directly to workspace files matching the active terminal tab
 
 ## Usage
 
@@ -17,30 +19,74 @@ Quickly copy and send file references to AI coding agents like Claude Code, Curs
 2. Press `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows/Linux)
 3. Reference is copied to clipboard AND sent to your terminal
 
-### Output Formats
+### Send an Explorer Resource to an Agent
 
-Configure via `agentRef.format` setting:
+1. In the Explorer, right-click a local file or folder.
+2. Open **Send to Agent** and choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. Enabled agents also appear as direct top-level actions below the flyout.
+3. The extension opens a new, focused terminal titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path, including nested directories. Otherwise it uses `parentFolder/filename` for a file or the selected folder path, and executes the command immediately.
 
-- **`universal`** (default): `src/components/Button.tsx:120-137`
-- **`claude`**: `@src/components/Button.tsx#120-137`
-- **`abs`**: `/absolute/path/to/file.tsx:120-137`
-- **`markdown`**: `` `src/components/Button.tsx:120-137` ``
+The selected resource is passed as its absolute local path. Before using an agent action, install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
+
+- Codex CLI (`codex`)
+- OpenCode CLI (`opencode`)
+- Claude Code CLI (`claude`)
+- Cursor CLI (`cursor`)
+
+Configure the `context-menu-loader` skill for each CLI that uses it. The extension does not install or configure the CLIs or skills.
+
+The generated commands use the following forms (the configured prompt is one shell argument):
+
+```bash
+codex '<PROMPT>'
+opencode --prompt '<PROMPT>'
+claude '<PROMPT>'
+cursor '<PROMPT>'
+```
+
+The default `agentRef.prompt` is `For this session, "the path" refers to "<PATH>". Do not inspect it yet; wait for a later request.` Every literal `<PATH>` is replaced with the selected absolute path. The path is retained as session context without reading the resource, so follow-up requests can refer to "the path". If the configured prompt contains no `<PATH>`, the extension appends exactly `\n path: ${absolutePath}`. The prompt and path are shell-quoted as one argument, so spaces, quotes, and shell metacharacters remain prompt data.
+
+Explorer actions support local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found error.
+
+All four agents remain available in **Send to Agent**. The direct-action settings only control the matching top-level action and update without reloading the extension:
+
+- `agentRef.showCodexInTopLevelMenu`
+- `agentRef.showOpenCodeInTopLevelMenu`
+- `agentRef.showClaudeCodeInTopLevelMenu`
+- `agentRef.showCursorInTopLevelMenu`
+
+Each setting defaults to `true`.
+
+### Open File from Active Terminal Title
+
+1. Focus an integrated terminal tab and press `Cmd+Ctrl+E` (Mac) or `Ctrl+Cmd+E` (Windows/Linux).
+2. **Title Normalization**: If the terminal title contains `/` (e.g., `parent/feature-branch`), the part after `/` is used as the target title (`feature-branch`).
+3. **Ordered Workspace File Lookup**: The extension searches the workspace for the first matching file in this order:
+   1. Primary search: `**/<tabTitle>*` (excludes `node_modules`).
+   2. Fallbacks in order:
+      - `**/.meta.<tabTitle>.yml`
+      - `**/.meta.<tabTitle>.yaml`
+      - `**/<tabTitle>/spec.md`
+4. **Editor Opening**: Opens and reveals the first matching file in the editor.
+5. **Feedback**: Displays a warning message when no match is found, or an error message when no terminal is active.
+
+Editor commands always produce an absolute reference. A single line is formatted as `<absolutePath>:<line>` and a range as `<absolutePath>:<start>-<end>`. There are no selectable format or path-style preferences.
 
 ### Commands
 
 - **Agent Ref: Copy and Send Reference** (`agentRef.copySend`) - Default: `Cmd+Shift+R`
 - **Agent Ref: Copy Reference Only** (`agentRef.copyOnly`)
 - **Agent Ref: Send to Terminal Only** (`agentRef.sendOnly`)
+- **Agent Ref: Open File for Terminal** (`agentRef.openTerminalFile`) - Default: `Cmd+Ctrl+E` / `Ctrl+Cmd+E` (when terminal has focus)
 
 ## Configuration
 
 All settings are under the `agentRef` namespace:
 
-### Format Settings
-
-- `agentRef.format`: Output format (see above)
-- `agentRef.pathStyle`: `auto` | `relative` | `absolute`
 - `agentRef.includeColumnRange`: Include column numbers (default: `false`)
+
+### Prompt Settings
+
+- `agentRef.prompt`: Prompt template for Explorer agent actions. Every `<PATH>` is replaced with the selected absolute path; without it, `\n path: ${absolutePath}` is appended.
 
 ### Clipboard Settings
 
@@ -53,6 +99,10 @@ All settings are under the `agentRef` namespace:
 - `agentRef.terminal.addNewLine`: Add newline when sending (default: `false`)
 - `agentRef.terminal.name`: Terminal name to create/use (default: `"Agent"`)
 
+### Direct Explorer Actions
+
+The **Send to Agent** submenu always contains all four agents. The four `agentRef.show...InTopLevelMenu` settings independently show or hide their matching direct Explorer action; each defaults to `true` and changes take effect immediately.
+
 ## Line Range Behavior
 
 - **Empty selection**: Single line reference (e.g., `:120`)
@@ -63,17 +113,17 @@ All settings are under the `agentRef` namespace:
 
 ### Cursor on line 42 (no selection)
 ```
-src/utils/helpers.ts:42
+/Users/me/work/src/utils/helpers.ts:42
 ```
 
 ### Lines 10-25 selected
 ```
-src/components/Form.tsx:10-25
+/Users/me/work/src/components/Form.tsx:10-25
 ```
 
-### With Claude format
+### Absolute reference
 ```
-@src/services/api.ts#15-30
+/Users/me/work/src/services/api.ts:15-30
 ```
 
 ## Development
