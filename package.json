@@ -2,7 +2,7 @@
   "name": "agent-ref",
   "displayName": "Agent Reference",
   "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
-  "version": "1.0.0",
+  "version": "1.0.10",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -26,8 +26,43 @@
       {
         "command": "agentRef.sendOnly",
         "title": "Agent Ref: Send to Terminal Only"
+      },
+      {
+        "command": "agentRef.sendToCodex",
+        "title": "in Codex"
+      },
+      {
+        "command": "agentRef.sendToOpenCode",
+        "title": "in OpenCode"
       }
     ],
+    "submenus": [
+      {
+        "id": "agentRef.sendToAgent",
+        "label": "Send to Agent"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "agentRef.sendToAgent",
+          "when": "resourceScheme == file",
+          "group": "7_modification@9"
+        }
+      ],
+      "agentRef.sendToAgent": [
+        {
+          "command": "agentRef.sendToCodex",
+          "when": "resourceScheme == file",
+          "group": "agent@1"
+        },
+        {
+          "command": "agentRef.sendToOpenCode",
+          "when": "resourceScheme == file",
+          "group": "agent@2"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "agentRef.sendOnly",
@@ -107,6 +142,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "test": "npm run compile && node --test test/agent-command.test.js",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
   },

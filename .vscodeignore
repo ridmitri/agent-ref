@@ -1,5 +1,8 @@
 .vscode
 .vscode-test
+.work
+node_modules
 src
+test
 tsconfig.json
 *.vsix

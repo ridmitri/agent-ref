@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { computeLineRange } from './selection';
 import { resolvePath, PathStyle } from './path';
 import { formatRef, ReferenceFormat } from './formatter';
-import { sendToTerminal, TerminalConfig } from './terminal';
+import { buildAgentCommand, AgentTarget } from './agent-command';
+import { launchNewTerminal, sendToTerminal, TerminalConfig } from './terminal';
 
 export function activate(context: vscode.ExtensionContext) {
   // Register primary command: copy and send
@@ -20,7 +21,44 @@ export function activate(context: vscode.ExtensionContext) {
     executeCommand({ copyToClipboard: false, sendToTerminal: true });
   });
 
-  context.subscriptions.push(copySend, copyOnly, sendOnly);
+  // Explorer commands receive the selected resource as a URI. Keep this
+  // path separate from the active-editor commands above: a folder can be
+  // selected without an active editor, and the editor may point elsewhere.
+  const sendToCodex = vscode.commands.registerCommand(
+    'agentRef.sendToCodex',
+    (uri?: vscode.Uri) => executeAgentCommand('codex', uri)
+  );
+
+  const sendToOpenCode = vscode.commands.registerCommand(
+    'agentRef.sendToOpenCode',
+    (uri?: vscode.Uri) => executeAgentCommand('opencode', uri)
+  );
+
+  context.subscriptions.push(
+    copySend,
+    copyOnly,
+    sendOnly,
+    sendToCodex,
+    sendToOpenCode
+  );
+}
+
+/**
+ * Launch an agent for the local Explorer resource supplied to the command.
+ *
+ * Explorer context-menu commands are normally passed a file URI, but keeping
+ * this guard here makes direct/accidental invocations safe as well.
+ */
+function executeAgentCommand(target: AgentTarget, uri?: vscode.Uri): void {
+  if (!uri || uri.scheme !== 'file' || !uri.fsPath) {
+    vscode.window.showInformationMessage(
+      'Select a local file or folder in Explorer to send it to an agent.'
+    );
+    return;
+  }
+
+  const terminalName = target === 'codex' ? 'Codex' : 'OpenCode';
+  launchNewTerminal(terminalName, buildAgentCommand(target, uri.fsPath));
 }
 
 type CommandOptions = {

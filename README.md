@@ -8,6 +8,7 @@ Quickly copy and send file references to AI coding agents like Claude Code, Curs
 - **Multiple output formats** for different AI tools
 - **Clipboard + Terminal integration** for seamless workflow
 - **Workspace-relative paths** by default
+- **Explorer context menu** to send a local file or folder to Codex or OpenCode
 
 ## Usage
 
@@ -16,6 +17,25 @@ Quickly copy and send file references to AI coding agents like Claude Code, Curs
 1. Select code in your editor (or just place cursor on a line)
 2. Press `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows/Linux)
 3. Reference is copied to clipboard AND sent to your terminal
+
+### Send an Explorer Resource to an Agent
+
+1. In the Explorer, right-click a local file or folder.
+2. Open **Send to Agent** and choose **in Codex** or **in OpenCode**.
+3. The extension opens a new, focused terminal named **Codex** or **OpenCode** and executes the command immediately.
+
+The selected resource is passed as its absolute local path. The feature requires the corresponding `codex` or `opencode` CLI to be installed and available on the integrated terminal's `PATH`, plus the `context-menu-loader` skill configured for that CLI. The extension does not install or configure either CLI or the skill.
+
+The generated commands use the following forms (the prompt is one shell argument):
+
+```bash
+codex 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+opencode --prompt 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+```
+
+This release supports local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual Explorer resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found (or equivalent) error; install the CLI and ensure it is on `PATH` before trying again.
+
+The CLI invocation was checked in the release environment on 2026-09-03: Codex CLI `0.153.0` accepts a positional `[PROMPT]` (`codex [PROMPT]`), and OpenCode `1.18.27` accepts `--prompt`.
 
 ### Output Formats
 

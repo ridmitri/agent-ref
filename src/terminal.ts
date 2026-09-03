@@ -28,3 +28,17 @@ export function sendToTerminal(text: string, config: TerminalConfig): void {
   // Send text
   terminal.sendText(text, config.addNewLine);
 }
+
+/**
+ * Create a focused terminal and execute a complete command in it.
+ *
+ * This is intentionally separate from sendToTerminal: Explorer agent actions
+ * must always get a fresh terminal and execute immediately, independently of
+ * the existing terminal configuration settings.
+ */
+export function launchNewTerminal(name: string, command: string): void {
+  const terminal = vscode.window.createTerminal(name);
+
+  terminal.show(false);
+  terminal.sendText(command, true);
+}

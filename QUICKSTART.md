@@ -17,7 +17,7 @@ This will:
 - Compile the TypeScript code
 - Launch a new VS Code window (Extension Development Host) with your extension loaded
 
-### 3. Test the Extension
+### 3. Test the editor commands
 
 In the Extension Development Host window:
 
@@ -45,6 +45,28 @@ Open Command Palette and try:
 - "Agent Ref: Copy and Send Reference" (default)
 - "Agent Ref: Copy Reference Only"
 - "Agent Ref: Send to Terminal Only"
+
+### 6. Test the Explorer agent menu
+
+Before testing, install the `codex` and/or `opencode` CLI and make sure the command is available in the integrated terminal. Configure the `context-menu-loader` skill for each CLI you plan to use; the extension does not install these prerequisites.
+
+In the Extension Development Host:
+
+1. Right-click a local file or folder in Explorer.
+2. Open **Send to Agent**.
+3. Choose **in Codex** or **in OpenCode**.
+4. Confirm that a new, focused terminal named **Codex** or **OpenCode** appears and runs the command immediately.
+
+The clicked resource is sent as an absolute path. This menu is limited to local `file` resources and POSIX-compatible integrated-terminal shells such as zsh or bash. Paths are shell-quoted as one prompt argument, including paths containing spaces, quotes, apostrophes, or shell metacharacters. If the CLI is missing, the terminal opens but reports the shell's normal command-not-found error.
+
+The invocation syntax verified in the release environment on 2026-09-03 is:
+
+```bash
+codex 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+opencode --prompt 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+```
+
+The checked versions were Codex CLI `0.153.0` and OpenCode `1.18.27`.
 
 ## Installing Locally
 
@@ -113,6 +135,12 @@ This creates `agent-ref-1.0.0.vsix`.
 - Check `agentRef.pathStyle` setting
 - Ensure you have a workspace folder open (not just a single file)
 - For workspace-relative paths, file must be inside workspace
+
+### Explorer agent command fails
+
+- Run `codex --version` or `opencode --version` in the integrated terminal to confirm the selected CLI is installed and on `PATH`.
+- Confirm that `context-menu-loader` is available to the selected CLI.
+- The Explorer menu intentionally supports only local files and folders; it is hidden for remote or virtual resources.
 
 ## Next Steps
 
