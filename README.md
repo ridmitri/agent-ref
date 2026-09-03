@@ -1,14 +1,14 @@
 # Agent Reference - VS Code Extension
 
-Quickly copy and send file references to AI coding agents like Claude Code, Cursor, and others.
+Quickly copy and send absolute file references to AI coding agents, or launch an agent for a local Explorer resource.
 
 ## Features
 
 - **Single hotkey** to create file references with line numbers
-- **Multiple output formats** for different AI tools
+- **Absolute-path references** with one deterministic format
 - **Clipboard + Terminal integration** for seamless workflow
-- **Workspace-relative paths** by default
-- **Explorer context menu** to send a local file or folder to Codex or OpenCode
+- **Explorer context menu** for Codex, OpenCode, Claude Code, and Cursor
+- **Configurable prompts** and optional direct top-level menu actions
 
 ## Usage
 
@@ -21,30 +21,43 @@ Quickly copy and send file references to AI coding agents like Claude Code, Curs
 ### Send an Explorer Resource to an Agent
 
 1. In the Explorer, right-click a local file or folder.
-2. Open **Send to Agent** and choose **in Codex** or **in OpenCode**.
-3. The extension opens a new, focused terminal named **Codex** or **OpenCode** and executes the command immediately.
+2. Open **Send to Agent** and choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. Enabled agents also appear as direct top-level actions below the flyout.
+3. The extension opens a new, focused terminal named for the selected agent and executes the command immediately.
 
-The selected resource is passed as its absolute local path. The feature requires the corresponding `codex` or `opencode` CLI to be installed and available on the integrated terminal's `PATH`, plus the `context-menu-loader` skill configured for that CLI. The extension does not install or configure either CLI or the skill.
+The selected resource is passed as its absolute local path. Before using an agent action, install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
 
-The generated commands use the following forms (the prompt is one shell argument):
+- Codex CLI (`codex`)
+- OpenCode CLI (`opencode`)
+- Claude Code CLI (`claude`)
+- Cursor CLI (`cursor`)
+
+Configure the `context-menu-loader` skill for each CLI that uses it. The extension does not install or configure the CLIs or skills.
+
+The generated commands use the following forms (the configured prompt is one shell argument):
 
 ```bash
-codex 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
-opencode --prompt 'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+codex '<PROMPT>'
+opencode --prompt '<PROMPT>'
+claude '<PROMPT>'
+cursor '<PROMPT>'
 ```
 
-This release supports local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual Explorer resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found (or equivalent) error; install the CLI and ensure it is on `PATH` before trying again.
+The default `agentRef.prompt` is `use skill "context-menu-loader" for the path "<PATH>"`. Every literal `<PATH>` is replaced with the selected absolute path. If the configured prompt contains no `<PATH>`, the extension appends exactly `\n path: ${absolutePath}`. The prompt and path are shell-quoted as one argument, so spaces, quotes, and shell metacharacters remain prompt data.
 
-The CLI invocation was checked in the release environment on 2026-09-03: Codex CLI `0.153.0` accepts a positional `[PROMPT]` (`codex [PROMPT]`), and OpenCode `1.18.27` accepts `--prompt`.
+Explorer actions support local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found error.
 
-### Output Formats
+All four agents remain available in **Send to Agent**. The direct-action settings only control the matching top-level action and update without reloading the extension:
 
-Configure via `agentRef.format` setting:
+- `agentRef.showCodexInTopLevelMenu`
+- `agentRef.showOpenCodeInTopLevelMenu`
+- `agentRef.showClaudeCodeInTopLevelMenu`
+- `agentRef.showCursorInTopLevelMenu`
 
-- **`universal`** (default): `src/components/Button.tsx:120-137`
-- **`claude`**: `@src/components/Button.tsx#120-137`
-- **`abs`**: `/absolute/path/to/file.tsx:120-137`
-- **`markdown`**: `` `src/components/Button.tsx:120-137` ``
+Each setting defaults to `true`.
+
+### Reference Format
+
+Editor commands always produce an absolute reference. A single line is formatted as `<absolutePath>:<line>` and a range as `<absolutePath>:<start>-<end>`. There are no selectable format or path-style preferences.
 
 ### Commands
 
@@ -56,11 +69,11 @@ Configure via `agentRef.format` setting:
 
 All settings are under the `agentRef` namespace:
 
-### Format Settings
-
-- `agentRef.format`: Output format (see above)
-- `agentRef.pathStyle`: `auto` | `relative` | `absolute`
 - `agentRef.includeColumnRange`: Include column numbers (default: `false`)
+
+### Prompt Settings
+
+- `agentRef.prompt`: Prompt template for Explorer agent actions. Every `<PATH>` is replaced with the selected absolute path; without it, `\n path: ${absolutePath}` is appended.
 
 ### Clipboard Settings
 
@@ -73,6 +86,10 @@ All settings are under the `agentRef` namespace:
 - `agentRef.terminal.addNewLine`: Add newline when sending (default: `false`)
 - `agentRef.terminal.name`: Terminal name to create/use (default: `"Agent"`)
 
+### Direct Explorer Actions
+
+The **Send to Agent** submenu always contains all four agents. The four `agentRef.show...InTopLevelMenu` settings independently show or hide their matching direct Explorer action; each defaults to `true` and changes take effect immediately.
+
 ## Line Range Behavior
 
 - **Empty selection**: Single line reference (e.g., `:120`)
@@ -83,17 +100,17 @@ All settings are under the `agentRef` namespace:
 
 ### Cursor on line 42 (no selection)
 ```
-src/utils/helpers.ts:42
+/Users/me/work/src/utils/helpers.ts:42
 ```
 
 ### Lines 10-25 selected
 ```
-src/components/Form.tsx:10-25
+/Users/me/work/src/components/Form.tsx:10-25
 ```
 
-### With Claude format
+### Absolute reference
 ```
-@src/services/api.ts#15-30
+/Users/me/work/src/services/api.ts:15-30
 ```
 
 ## Development

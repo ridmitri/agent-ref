@@ -1,37 +1,15 @@
 import { LineRange } from './selection';
 
-export type ReferenceFormat = 'universal' | 'claude' | 'abs' | 'markdown';
-
 export type FormatConfig = {
-  format: ReferenceFormat;
   path: string;
   range: LineRange;
 };
 
 /**
- * Format file reference according to specified format
+ * Format a file reference using the single absolute-path contract.
  */
 export function formatRef(config: FormatConfig): string {
-  const { format, path, range } = config;
-
-  const rangeStr = formatRange(range);
-
-  switch (format) {
-    case 'universal':
-      return `${path}:${rangeStr}`;
-
-    case 'claude':
-      return `@${path}#${rangeStr}`;
-
-    case 'abs':
-      return `${path}:${rangeStr}`;
-
-    case 'markdown':
-      return `\`${path}:${rangeStr}\``;
-
-    default:
-      return `${path}:${rangeStr}`;
-  }
+  return `${config.path}:${formatRange(config.range)}`;
 }
 
 /**
