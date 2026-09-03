@@ -7,6 +7,10 @@
 - Grouped all Agent Reference Explorer actions separately from built-in modification actions, preventing them from being interleaved with **Rename…** and **Delete**.
 - Rebuilt the extension with the current settings manifest: absolute references, the `agentRef.prompt` text field, and per-agent direct-menu toggles replace the retired Format and Path Style preferences.
 
+### Changed
+
+- The default prompt now establishes the selected path as session context and instructs the agent to wait for a follow-up request before inspecting it.
+
 ## [1.0.11] - 2026-09-03
 
 ### Added

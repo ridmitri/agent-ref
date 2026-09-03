@@ -8,7 +8,7 @@ const {
 } = require('../out/agent-command.js');
 
 const promptFor = (absolutePath) =>
-  `use skill "context-menu-loader" for the path "${absolutePath}"`;
+  `For this session, "the path" refers to "${absolutePath}". Do not inspect it yet; wait for a later request.`;
 
 const quotePosixShellArgument = (value) =>
   `'${value.replace(/'/g, `'\\''`)}'`;
@@ -153,6 +153,6 @@ test('keeps configured shell syntax and troublesome paths as one prompt argument
 test('retains the current prompt as the default template', () => {
   assert.equal(
     buildAgentPrompt(DEFAULT_PROMPT, '/Users/me/work/frontend/app.js'),
-    'use skill "context-menu-loader" for the path "/Users/me/work/frontend/app.js"'
+    'For this session, "the path" refers to "/Users/me/work/frontend/app.js". Do not inspect it yet; wait for a later request.'
   );
 });

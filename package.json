@@ -144,7 +144,7 @@
         },
         "agentRef.prompt": {
           "type": "string",
-          "default": "use skill \"context-menu-loader\" for the path \"<PATH>\"",
+          "default": "For this session, \"the path\" refers to \"<PATH>\". Do not inspect it yet; wait for a later request.",
           "description": "Prompt sent to the selected agent. Use <PATH> to insert the selected file or folder path."
         },
         "agentRef.showCodexInTopLevelMenu": {

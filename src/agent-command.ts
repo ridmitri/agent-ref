@@ -62,8 +62,6 @@ export const AGENT_METADATA: Readonly<Record<AgentTarget, AgentMetadata>> = {
   }
 };
 
-const CONTEXT_MENU_LOADER = 'context-menu-loader';
-
 /**
  * Default prompt used by Explorer agent actions.
  *
@@ -71,7 +69,7 @@ const CONTEXT_MENU_LOADER = 'context-menu-loader';
  * complete prompt is passed to the target CLI as one shell argument.
  */
 export const DEFAULT_PROMPT =
-  `use skill "${CONTEXT_MENU_LOADER}" for the path "<PATH>"`;
+  `For this session, "the path" refers to "<PATH>". Do not inspect it yet; wait for a later request.`;
 
 /**
  * Resolve a configured prompt template for an Explorer resource.

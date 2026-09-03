@@ -42,7 +42,7 @@ claude '<PROMPT>'
 cursor '<PROMPT>'
 ```
 
-The default `agentRef.prompt` is `use skill "context-menu-loader" for the path "<PATH>"`. Every literal `<PATH>` is replaced with the selected absolute path. If the configured prompt contains no `<PATH>`, the extension appends exactly `\n path: ${absolutePath}`. The prompt and path are shell-quoted as one argument, so spaces, quotes, and shell metacharacters remain prompt data.
+The default `agentRef.prompt` is `For this session, "the path" refers to "<PATH>". Do not inspect it yet; wait for a later request.` Every literal `<PATH>` is replaced with the selected absolute path. The path is retained as session context without reading the resource, so follow-up requests can refer to "the path". If the configured prompt contains no `<PATH>`, the extension appends exactly `\n path: ${absolutePath}`. The prompt and path are shell-quoted as one argument, so spaces, quotes, and shell metacharacters remain prompt data.
 
 Explorer actions support local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found error.
 
