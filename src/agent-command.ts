@@ -14,7 +14,6 @@ export type AgentMetadata = {
   target: AgentTarget;
   displayLabel: string;
   executable: string;
-  terminalName: string;
   commandId: string;
   directMenuSettingKey: string;
   promptArgument: 'positional' | '--prompt';
@@ -28,7 +27,6 @@ export const AGENT_METADATA: Readonly<Record<AgentTarget, AgentMetadata>> = {
     target: 'codex',
     displayLabel: 'Codex',
     executable: 'codex',
-    terminalName: 'Codex',
     commandId: 'agentRef.sendToCodex',
     directMenuSettingKey: 'showCodexInTopLevelMenu',
     promptArgument: 'positional'
@@ -37,7 +35,6 @@ export const AGENT_METADATA: Readonly<Record<AgentTarget, AgentMetadata>> = {
     target: 'opencode',
     displayLabel: 'OpenCode',
     executable: 'opencode',
-    terminalName: 'OpenCode',
     commandId: 'agentRef.sendToOpenCode',
     directMenuSettingKey: 'showOpenCodeInTopLevelMenu',
     promptArgument: '--prompt'
@@ -46,7 +43,6 @@ export const AGENT_METADATA: Readonly<Record<AgentTarget, AgentMetadata>> = {
     target: 'claudeCode',
     displayLabel: 'Claude Code',
     executable: 'claude',
-    terminalName: 'Claude Code',
     commandId: 'agentRef.sendToClaudeCode',
     directMenuSettingKey: 'showClaudeCodeInTopLevelMenu',
     promptArgument: 'positional'
@@ -54,8 +50,7 @@ export const AGENT_METADATA: Readonly<Record<AgentTarget, AgentMetadata>> = {
   cursor: {
     target: 'cursor',
     displayLabel: 'Cursor',
-    executable: 'cursor',
-    terminalName: 'Cursor',
+    executable: 'agent',
     commandId: 'agentRef.sendToCursor',
     directMenuSettingKey: 'showCursorInTopLevelMenu',
     promptArgument: 'positional'

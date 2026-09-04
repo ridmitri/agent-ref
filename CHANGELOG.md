@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.0.16-alpha.7] - 2026-09-04
+
+### Changed
+
+- Explorer agent terminals are titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path. Nested directories such as `conmon/frontend/src/components` title the terminal `conmon`.
+- If Git reports that the path is not a repository, a file uses `parentFolder/filename` and a folder uses the folder name. For example, `~/Desktop/my/document` titles the terminal `document`. Agent display names are not used as titles.
+- Explorer **Open in Cursor** invokes the standalone `agent` CLI instead of `cursor`.
+
+### Fixed
+
+- Editor reference commands transfer keyboard focus to the receiving terminal when terminal focus is enabled.
+
+## [1.0.15] - 2026-09-04
+
+### Fixed
+
+- Explorer agent launches now explicitly transfer keyboard focus to the new integrated terminal after submitting the command.
+
+## [1.0.14] - 2026-09-04
+
+### Added
+
+- Added `agentRef.workingDirectory` setting to configure the working directory for agent terminal sessions, configurable per workspace.
+- Automatic fallback: when `agentRef.workingDirectory` is empty or unset, agent terminal sessions launch directly in the selected folder or the parent folder of the selected file.
+- Option to specify absolute paths or workspace-relative paths for `agentRef.workingDirectory`.
+
+### Fixed
+
+- Focus a newly created Explorer agent terminal after its command is queued, so it remains the active terminal.
+
 ## [1.0.12] - 2026-09-03
 
 ### Fixed

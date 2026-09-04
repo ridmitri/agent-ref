@@ -22,7 +22,7 @@ Quickly copy and send absolute file references to AI coding agents, or launch an
 
 1. In the Explorer, right-click a local file or folder.
 2. Open **Send to Agent** and choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. Enabled agents also appear as direct top-level actions below the flyout.
-3. The extension opens a new, focused terminal named for the selected agent and executes the command immediately.
+3. The extension opens a new, focused terminal titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path, including nested directories. Otherwise it uses `parentFolder/filename` for a file or the selected folder path, and executes the command immediately.
 
 The selected resource is passed as its absolute local path. Before using an agent action, install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { computeLineRange } from './selection';
-import { resolvePath } from './path';
+import { resolvePath, resolveWorkingDirectory } from './path';
 import { formatRef } from './formatter';
 import {
   AGENT_METADATA,
@@ -93,7 +93,7 @@ function registerTopLevelMenuVisibility(
 function executeAgentCommand(
   agent: AgentMetadata,
   uri?: vscode.Uri
-): void {
+): Thenable<void> | void {
   if (!uri || uri.scheme !== 'file' || !uri.fsPath) {
     vscode.window.showInformationMessage(
       'Select a local file or folder in Explorer to send it to an agent.'
@@ -101,13 +101,23 @@ function executeAgentCommand(
     return;
   }
 
-  const prompt = vscode.workspace
-    .getConfiguration('agentRef')
-    .get<string>('prompt', DEFAULT_PROMPT);
+  const config = vscode.workspace.getConfiguration('agentRef');
+  const prompt = config.get<string>('prompt', DEFAULT_PROMPT);
+  const configuredWorkingDirectory = config.get<string>('workingDirectory', '');
 
-  launchNewTerminal(
-    agent.terminalName,
-    buildAgentCommand(agent.target, uri.fsPath, prompt)
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+  const workspaceRoot = workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+  const cwd = resolveWorkingDirectory(
+    uri.fsPath,
+    configuredWorkingDirectory,
+    workspaceRoot
+  );
+
+  return launchNewTerminal(
+    buildAgentCommand(agent.target, uri.fsPath, prompt),
+    cwd,
+    uri.fsPath
   );
 }
 

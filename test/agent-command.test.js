@@ -40,12 +40,12 @@ test('builds the Claude Code command with Codex prompt-argument behavior', () =>
   );
 });
 
-test('builds the Cursor command with Codex prompt-argument behavior', () => {
+test('builds the Cursor agent CLI command with one quoted prompt argument', () => {
   const absolutePath = '/Users/me/work/frontend/app.js';
 
   assert.equal(
     buildAgentCommand('cursor', absolutePath),
-    `cursor ${quotePosixShellArgument(promptFor(absolutePath))}`
+    `agent ${quotePosixShellArgument(promptFor(absolutePath))}`
   );
 });
 
@@ -74,7 +74,7 @@ test('keeps whitespace, quotes, and shell metacharacters in the prompt data', ()
   assert.equal(buildAgentCommand('codex', absolutePath), `codex ${quotedPrompt}`);
   assert.equal(buildAgentCommand('opencode', absolutePath), `opencode --prompt ${quotedPrompt}`);
   assert.equal(buildAgentCommand('claudeCode', absolutePath), `claude ${quotedPrompt}`);
-  assert.equal(buildAgentCommand('cursor', absolutePath), `cursor ${quotedPrompt}`);
+  assert.equal(buildAgentCommand('cursor', absolutePath), `agent ${quotedPrompt}`);
   assert.match(quotedPrompt, /'\\''/);
   assert.match(quotedPrompt, /\$\(touch \/tmp\/pwned\)/);
   assert.match(quotedPrompt, /\*\.md/);
@@ -98,7 +98,7 @@ test('uses a configured prompt template for every supported agent', () => {
   );
   assert.equal(
     buildAgentCommand('cursor', absolutePath, promptTemplate),
-    `cursor ${quotedPrompt}`
+    `agent ${quotedPrompt}`
   );
 });
 
@@ -134,7 +134,7 @@ test('appends the exact path fallback when a prompt has no placeholder', () => {
   );
   assert.equal(
     buildAgentCommand('cursor', absolutePath, promptTemplate),
-    `cursor ${expectedPrompt}`
+    `agent ${expectedPrompt}`
   );
 });
 

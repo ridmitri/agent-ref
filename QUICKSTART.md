@@ -62,7 +62,7 @@ In the Extension Development Host:
 1. Right-click a local file or folder in Explorer.
 2. Open **Send to Agent**.
 3. Choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. By default, matching direct actions also appear immediately below the flyout.
-4. Confirm that a new, focused terminal named for the selected agent appears and runs the command immediately.
+4. Confirm that a new, focused terminal titled with the Git repository folder from `git rev-parse --show-toplevel` (or `parentFolder/filename` for a file / the selected folder path when Git reports that the path is not a repository) appears and runs the command immediately.
 
 The clicked resource is sent as an absolute path. This menu is limited to local `file` resources and POSIX-compatible integrated-terminal shells such as zsh or bash. Paths are shell-quoted as one prompt argument, including paths containing spaces, quotes, apostrophes, or shell metacharacters. If the CLI is missing, the terminal opens but reports the shell's normal command-not-found error.
 

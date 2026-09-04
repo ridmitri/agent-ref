@@ -25,6 +25,8 @@ test('exposes the prompt setting and omits retired reference preferences', () =>
   const settings = manifest.contributes.configuration.properties;
 
   assert.equal(settings['agentRef.prompt'].type, 'string');
+  assert.equal(settings['agentRef.workingDirectory'].type, 'string');
+  assert.equal(settings['agentRef.workingDirectory'].default, '');
   assert.equal(settings['agentRef.format'], undefined);
   assert.equal(settings['agentRef.pathStyle'], undefined);
 });
