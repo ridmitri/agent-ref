@@ -20,13 +20,7 @@ jobs:
           cache: npm
 
       - name: Scan tracked files for private data
-        run: |
-          set -euo pipefail
-          if git grep -nE 'conmon|/Users/dryzhov|\bdryzhov\b|[Dd]eep[Uu]p' -- ':!.work'; then
-            echo '::error::Private data leak detected in tracked files' >&2
-            exit 1
-          fi
-          echo 'No private-data matches'
+        run: bash scripts/scan-private-data.sh
 
       - run: npm ci
       - run: npm run lint

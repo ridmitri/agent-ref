@@ -3,6 +3,7 @@
 .work
 .github
 .eslintrc.json
+scripts
 node_modules
 src
 test
