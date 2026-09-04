@@ -115,7 +115,7 @@ test('explicitly focuses a new Explorer agent terminal after dispatch', async ()
 
 test('titles a new Explorer agent terminal with the git toplevel from a nested path', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ref-terminal-'));
-  const repoDir = path.join(tmpDir, 'conmon');
+  const repoDir = path.join(tmpDir, 'my-repo');
   const nestedDir = path.join(repoDir, 'frontend', 'src', 'components');
   fs.mkdirSync(nestedDir, { recursive: true });
   execFileSync('git', ['init'], {
@@ -148,7 +148,7 @@ test('titles a new Explorer agent terminal with the git toplevel from a nested p
     await launchNewTerminal('codex prompt', nestedDir, nestedDir);
 
     assert.deepEqual(calls, [
-      ['createTerminal', { name: 'conmon', cwd: nestedDir }],
+      ['createTerminal', { name: 'my-repo', cwd: nestedDir }],
       ['sendText', 'codex prompt', true],
       ['show', false],
       ['executeCommand', 'workbench.action.terminal.focus']

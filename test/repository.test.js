@@ -27,12 +27,12 @@ function initGitRepository(repoDir) {
 
 test('resolves the repository folder name from a git working tree root', async () => {
   const tmpDir = makeTempDir();
-  const repoDir = path.join(tmpDir, 'conmon');
+  const repoDir = path.join(tmpDir, 'my-repo');
   fs.mkdirSync(repoDir);
 
   try {
     initGitRepository(repoDir);
-    assert.equal(await resolveRepositoryFolderName(repoDir), 'conmon');
+    assert.equal(await resolveRepositoryFolderName(repoDir), 'my-repo');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -40,13 +40,13 @@ test('resolves the repository folder name from a git working tree root', async (
 
 test('resolves the repository folder name from a nested path via git rev-parse --show-toplevel', async () => {
   const tmpDir = makeTempDir();
-  const repoDir = path.join(tmpDir, 'conmon');
+  const repoDir = path.join(tmpDir, 'my-repo');
   const nestedDir = path.join(repoDir, 'frontend', 'src', 'components');
   fs.mkdirSync(nestedDir, { recursive: true });
 
   try {
     initGitRepository(repoDir);
-    assert.equal(await resolveRepositoryFolderName(nestedDir), 'conmon');
+    assert.equal(await resolveRepositoryFolderName(nestedDir), 'my-repo');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -92,7 +92,7 @@ test('titles a folder with the folder path', () => {
 
 test('prefers the git toplevel name for a nested supplied path even when cwd is not a repository', async () => {
   const tmpDir = makeTempDir();
-  const repoDir = path.join(tmpDir, 'conmon');
+  const repoDir = path.join(tmpDir, 'my-repo');
   const nestedDir = path.join(repoDir, 'frontend', 'src', 'components');
   const otherCwd = path.join(tmpDir, 'not-a-repo');
   fs.mkdirSync(nestedDir, { recursive: true });
@@ -100,7 +100,7 @@ test('prefers the git toplevel name for a nested supplied path even when cwd is 
 
   try {
     initGitRepository(repoDir);
-    assert.equal(await resolveTerminalName(otherCwd, nestedDir), 'conmon');
+    assert.equal(await resolveTerminalName(otherCwd, nestedDir), 'my-repo');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

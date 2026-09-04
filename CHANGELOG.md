@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Explorer agent terminals are titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path. Nested directories such as `conmon/frontend/src/components` title the terminal `conmon`.
+- Explorer agent terminals are titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path. Nested directories such as `my-repo/frontend/src/components` title the terminal `my-repo`.
 - If Git reports that the path is not a repository, a file uses `parentFolder/filename` and a folder uses the folder name. For example, `~/Desktop/my/document` titles the terminal `document`. Agent display names are not used as titles.
 - Explorer **Open in Cursor** invokes the standalone `agent` CLI instead of `cursor`.
 

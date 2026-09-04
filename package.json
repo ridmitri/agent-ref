@@ -3,6 +3,11 @@
   "displayName": "Agent Reference",
   "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
   "version": "1.0.16-alpha.7",
+  "publisher": "ridmitri",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ridmitri/agent-ref.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -181,7 +186,8 @@
     "package:extension": "mkdir -p build && npx @vscode/vsce package --out build/agent-ref-$npm_package_version.vsix",
     "test": "npm run compile && node --test test/*.test.js",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "typecheck": "tsc --noEmit -p ./"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",

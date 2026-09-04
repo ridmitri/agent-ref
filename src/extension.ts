@@ -173,7 +173,9 @@ function executeCommand(options: CommandOptions): void {
 
   // Show status message
   const action = [];
-  if (copyEnabled) action.push('Copied');
+  if (copyEnabled) {
+    action.push('Copied');
+  }
   if (options.sendToTerminal && config.get('terminal.send', true)) {
     action.push('sent to terminal');
   }

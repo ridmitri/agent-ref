@@ -5,7 +5,7 @@
 ### 1. Open in VS Code
 
 ```bash
-code /Users/dryzhov/work/tools/agent-ref
+code agent-ref
 ```
 
 ### 2. Launch Extension Development Host
