@@ -47,6 +47,10 @@
       {
         "command": "agentRef.sendToCursor",
         "title": "Open in Cursor"
+      },
+      {
+        "command": "agentRef.openTerminalFile",
+        "title": "Agent Ref: Open File for Terminal"
       }
     ],
     "submenus": [
@@ -112,6 +116,12 @@
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "agentRef.openTerminalFile",
+        "key": "ctrl+cmd+e",
+        "mac": "cmd+ctrl+e",
+        "when": "terminalFocus"
       }
     ],
     "configuration": {

@@ -30,3 +30,19 @@ test('exposes the prompt setting and omits retired reference preferences', () =>
   assert.equal(settings['agentRef.format'], undefined);
   assert.equal(settings['agentRef.pathStyle'], undefined);
 });
+
+test('contributes terminal-title command, keybinding, chord, and when condition', () => {
+  const command = manifest.contributes.commands.find(
+    (c) => c.command === 'agentRef.openTerminalFile'
+  );
+  assert.ok(command);
+  assert.equal(command.title, 'Agent Ref: Open File for Terminal');
+
+  const keybinding = manifest.contributes.keybindings.find(
+    (kb) => kb.command === 'agentRef.openTerminalFile'
+  );
+  assert.ok(keybinding);
+  assert.equal(keybinding.key, 'ctrl+cmd+e');
+  assert.equal(keybinding.mac, 'cmd+ctrl+e');
+  assert.equal(keybinding.when, 'terminalFocus');
+});
