@@ -10,6 +10,7 @@ import {
 } from './agent-command';
 import { getTopLevelMenuContextUpdate } from './menu-preferences';
 import { launchNewTerminal, sendToTerminal, TerminalConfig } from './terminal';
+import { openTerminalFile } from './open-terminal-file';
 
 export function activate(context: vscode.ExtensionContext) {
   // Register primary command: copy and send
@@ -27,6 +28,12 @@ export function activate(context: vscode.ExtensionContext) {
     executeCommand({ copyToClipboard: false, sendToTerminal: true });
   });
 
+  // Register terminal-file opening command
+  const openTerminalFileCmd = vscode.commands.registerCommand(
+    'agentRef.openTerminalFile',
+    openTerminalFile
+  );
+
   // Explorer commands receive the selected resource as a URI. Keep this
   // path separate from the active-editor commands above: a folder can be
   // selected without an active editor, and the editor may point elsewhere.
@@ -43,6 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
     copySend,
     copyOnly,
     sendOnly,
+    openTerminalFileCmd,
     ...agentCommands
   );
 }
