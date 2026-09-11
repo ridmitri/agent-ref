@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.16-alpha.8] - 2026-09-11
+
+### Added
+
+- Added the terminal-focused `Cmd+Ctrl+E` command to open workspace files by active terminal title, with `.meta.<title>.yml`, `.meta.<title>.yaml`, and `<title>/spec.md` fallbacks.
+
 ## [1.0.16-alpha.7] - 2026-09-04
 
 ### Changed
