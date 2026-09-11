@@ -9,6 +9,7 @@ Quickly copy and send absolute file references to AI coding agents, or launch an
 - **Clipboard + Terminal integration** for seamless workflow
 - **Explorer context menu** for Codex, OpenCode, Claude Code, and Cursor
 - **Configurable prompts** and optional direct top-level menu actions
+- **Terminal-title file opening** (`Cmd+Ctrl+E`) to jump directly to workspace files matching the active terminal tab
 
 ## Usage
 
@@ -55,7 +56,18 @@ All four agents remain available in **Send to Agent**. The direct-action setting
 
 Each setting defaults to `true`.
 
-### Reference Format
+### Open File from Active Terminal Title
+
+1. Focus an integrated terminal tab and press `Cmd+Ctrl+E` (Mac) or `Ctrl+Cmd+E` (Windows/Linux).
+2. **Title Normalization**: If the terminal title contains `/` (e.g., `parent/feature-branch`), the part after `/` is used as the target title (`feature-branch`).
+3. **Ordered Workspace File Lookup**: The extension searches the workspace for the first matching file in this order:
+   1. Primary search: `**/<tabTitle>*` (excludes `node_modules`).
+   2. Fallbacks in order:
+      - `**/.meta.<tabTitle>.yml`
+      - `**/.meta.<tabTitle>.yaml`
+      - `**/<tabTitle>/spec.md`
+4. **Editor Opening**: Opens and reveals the first matching file in the editor.
+5. **Feedback**: Displays a warning message when no match is found, or an error message when no terminal is active.
 
 Editor commands always produce an absolute reference. A single line is formatted as `<absolutePath>:<line>` and a range as `<absolutePath>:<start>-<end>`. There are no selectable format or path-style preferences.
 
@@ -64,6 +76,7 @@ Editor commands always produce an absolute reference. A single line is formatted
 - **Agent Ref: Copy and Send Reference** (`agentRef.copySend`) - Default: `Cmd+Shift+R`
 - **Agent Ref: Copy Reference Only** (`agentRef.copyOnly`)
 - **Agent Ref: Send to Terminal Only** (`agentRef.sendOnly`)
+- **Agent Ref: Open File for Terminal** (`agentRef.openTerminalFile`) - Default: `Cmd+Ctrl+E` / `Ctrl+Cmd+E` (when terminal has focus)
 
 ## Configuration
 
