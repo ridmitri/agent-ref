@@ -7,6 +7,7 @@ function loadOpenTerminalFileWith(mockVscode) {
   const modulePath = require.resolve('../out/open-terminal-file.js');
 
   delete require.cache[modulePath];
+  delete require.cache[require.resolve('../out/terminal-file-binding.js')];
   Module._load = function load(request, parent, isMain) {
     if (request === 'vscode') {
       return mockVscode;
@@ -15,7 +16,10 @@ function loadOpenTerminalFileWith(mockVscode) {
   };
 
   try {
-    return require('../out/open-terminal-file.js');
+    return {
+      ...require('../out/open-terminal-file.js'),
+      ...require('../out/terminal-file-binding.js')
+    };
   } finally {
     Module._load = originalLoad;
   }
@@ -250,4 +254,118 @@ test('shows warning containing original terminal name when no candidates match',
   assert.equal(warnings.length, 1);
   assert.ok(warnings[0].includes(termName));
   assert.equal(openedDocs.length, 0);
+});
+
+test('explicit navigation follows terminal instance bindings across duplicate names, renames and repeated invocation', async () => {
+  const opened = [];
+  const shown = [];
+  const firstTerminal = { name: 'spec.md' };
+  const secondTerminal = { name: 'spec.md' };
+  const firstUri = { fsPath: '/workspace/.work/task/spec.md' };
+  const secondUri = { fsPath: '/second-root/.work/another/spec.md' };
+  const window = {
+    activeTerminal: firstTerminal,
+    showTextDocument(document, options) {
+      shown.push([document.uri, options]);
+      return Promise.resolve();
+    }
+  };
+  const { openTerminalFile, terminalFileBindings } = loadOpenTerminalFileWith({
+    window,
+    workspace: {
+      findFiles() { throw new Error('bound navigation must not search by title'); },
+      openTextDocument(uri) {
+        opened.push(uri);
+        return Promise.resolve({ uri });
+      }
+    }
+  });
+  terminalFileBindings.bind(firstTerminal, firstUri);
+  terminalFileBindings.bind(secondTerminal, secondUri);
+
+  // Selecting a terminal alone must retain terminal focus and not open a file.
+  window.activeTerminal = secondTerminal;
+  assert.deepEqual(opened, []);
+  await openTerminalFile();
+  window.activeTerminal = firstTerminal;
+  firstTerminal.name = 'custom name';
+  assert.deepEqual(opened, [secondUri]);
+  await openTerminalFile();
+  await openTerminalFile();
+
+  assert.deepEqual(opened, [secondUri, firstUri, firstUri]);
+  assert.deepEqual(shown, [
+    [secondUri, { preserveFocus: false }],
+    [firstUri, { preserveFocus: false }],
+    [firstUri, { preserveFocus: false }]
+  ]);
+});
+
+test('bound metadata and ordinary files with glob characters open as exact original URI objects', async () => {
+  for (const selectedPath of [
+    '/workspace/.work/task/.meta.[task]*.yml',
+    '/workspace/notes [v2]?*.md'
+  ]) {
+    const terminal = { name: 'arbitrary terminal title' };
+    const uri = { fsPath: selectedPath, query: 'retained original URI' };
+    const opened = [];
+    const { openTerminalFile, terminalFileBindings } = loadOpenTerminalFileWith({
+      window: {
+        activeTerminal: terminal,
+        showTextDocument(document, options) {
+          assert.equal(document.uri, uri);
+          assert.deepEqual(options, { preserveFocus: false });
+          return Promise.resolve();
+        }
+      },
+      workspace: {
+        findFiles() { throw new Error('exact URI cannot be converted to a glob'); },
+        openTextDocument(target) {
+          opened.push(target);
+          return Promise.resolve({ uri: target });
+        }
+      }
+    });
+    terminalFileBindings.bind(terminal, uri);
+    await openTerminalFile();
+    assert.deepEqual(opened, [uri]);
+    assert.equal(opened[0], uri);
+  }
+});
+
+test('bound open and editor-display failures report the file without searching for a replacement', async () => {
+  for (const failingStep of ['open', 'show']) {
+    const terminal = { name: 'spec.md' };
+    const uri = { fsPath: '/workspace/.work/deleted/spec.md' };
+    const errors = [];
+    const opened = [];
+    const shown = [];
+    const { openTerminalFile, terminalFileBindings } = loadOpenTerminalFileWith({
+      window: {
+        activeTerminal: terminal,
+        showErrorMessage(message) { errors.push(message); },
+        showTextDocument(document, options) {
+          shown.push([document, options]);
+          throw new Error('editor cannot display this document');
+        }
+      },
+      workspace: {
+        findFiles() { throw new Error('must never substitute a similar filename'); },
+        openTextDocument(target) {
+          opened.push(target);
+          if (failingStep === 'open') throw new Error('file does not exist');
+          return Promise.resolve({ uri: target });
+        }
+      }
+    });
+    terminalFileBindings.bind(terminal, uri);
+    await openTerminalFile();
+
+    assert.deepEqual(opened, [uri]);
+    assert.equal(shown.length, failingStep === 'open' ? 0 : 1);
+    assert.equal(errors.length, 1);
+    assert.ok(errors[0].includes(uri.fsPath));
+    assert.ok(errors[0].includes(failingStep === 'open' ? 'file does not exist' : 'editor cannot display'));
+    assert.equal(terminalFileBindings.get(terminal), uri);
+  }
 });

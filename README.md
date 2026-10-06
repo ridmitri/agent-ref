@@ -8,8 +8,8 @@ Quickly copy and send absolute file references to AI coding agents, or launch an
 - **Absolute-path references** with one deterministic format
 - **Clipboard + Terminal integration** for seamless workflow
 - **Explorer context menu** for Codex, OpenCode, Claude Code, and Cursor
-- **Configurable prompts** and optional direct top-level menu actions
-- **Terminal-title file opening** (`Cmd+Ctrl+E`) to jump directly to workspace files matching the active terminal tab
+- **Filename terminal titles** and optional direct top-level menu actions
+- **Exact-file return navigation** with **Open File for Terminal** (`Cmd+Ctrl+E`)
 
 ## Usage
 
@@ -19,35 +19,36 @@ Quickly copy and send absolute file references to AI coding agents, or launch an
 2. Press `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows/Linux)
 3. Reference is copied to clipboard AND sent to your terminal
 
-### Send an Explorer Resource to an Agent
+### Open an Explorer Resource with an Agent
 
-1. In the Explorer, right-click a local file or folder.
-2. Open **Send to Agent** and choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. Enabled agents also appear as direct top-level actions below the flyout.
-3. The extension opens a new, focused terminal titled with the Git repository folder from `git rev-parse --show-toplevel` on the selected path, including nested directories. Otherwise it uses `parentFolder/filename` for a file or the selected folder path, and executes the command immediately.
+1. In Explorer, right-click a local file or folder.
+2. Open **Select Agent** and choose **Open in Codex**, **Open in OpenCode**, **Open in Claude Code**, or **Open in Cursor**. Enabled agents also appear as direct top-level actions.
+3. A fresh terminal opens with the selected filename as the title. Names beginning with `.meta.` omit that prefix and a trailing `.yml` or `.yaml`; for example, `.meta.DP-19929_fe_network_hierarchy.yml` becomes `DP-19929_fe_network_hierarchy`. Other filenames retain their extensions. The selected agent starts and waits for your input.
+4. To return to the selected file, select its terminal and invoke **Agent Ref: Open File for Terminal** from the Command Palette or press `Cmd+Ctrl+E`.
 
-The selected resource is passed as its absolute local path. Before using an agent action, install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
+A file launch binds the new terminal to the exact selected file URI. You can choose any ordinary file or a task `.meta` file; metadata is optional and is not parsed. Files with the same filename receive the same visible terminal title but retain distinct bindings. Renaming a terminal does not change its bound file.
+
+Every agent starts in the absolute directory specified by `WORKSPACE_PATH` in the VS Code extension host environment, regardless of the selected file or open project roots. Set it before starting VS Code, for example `export WORKSPACE_PATH=/Users/dryzhov/work`, then fully quit and restart VS Code so the host inherits it. The path must exist and be a directory. Missing, relative, inaccessible, or invalid values produce an error and prevent terminal creation. Folder launches use the folder basename as the title and have no file binding.
+
+Install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
 
 - Codex CLI (`codex`)
 - OpenCode CLI (`opencode`)
 - Claude Code CLI (`claude`)
-- Cursor CLI (`cursor`)
+- Cursor CLI (`agent`)
 
-Configure the `context-menu-loader` skill for each CLI that uses it. The extension does not install or configure the CLIs or skills.
-
-The generated commands use the following forms (the configured prompt is one shell argument):
+The extension resets the shell to the validated workspace immediately before starting the selected CLI, so shell startup scripts cannot leave the agent in a different directory. It uses a quoted `cd -- <workspace> && <executable>` bootstrap in the integrated POSIX shell (such as zsh or bash):
 
 ```bash
-codex '<PROMPT>'
-opencode --prompt '<PROMPT>'
-claude '<PROMPT>'
-cursor '<PROMPT>'
+cd -- '/Users/dryzhov/work' && codex
+cd -- '/Users/dryzhov/work' && opencode
+cd -- '/Users/dryzhov/work' && claude
+cd -- '/Users/dryzhov/work' && agent
 ```
 
-The default `agentRef.prompt` is `For this session, "the path" refers to "<PATH>". Do not inspect it yet; wait for a later request.` Every literal `<PATH>` is replaced with the selected absolute path. The path is retained as session context without reading the resource, so follow-up requests can refer to "the path". If the configured prompt contains no `<PATH>`, the extension appends exactly `\n path: ${absolutePath}`. The prompt and path are shell-quoted as one argument, so spaces, quotes, and shell metacharacters remain prompt data.
+No startup message or selected path is sent to the agent automatically. Use the agent chat to assign your task. Explorer actions support local `file` resources. If a CLI is unavailable, the new terminal opens and the shell reports its normal command-not-found error.
 
-Explorer actions support local `file` resources and POSIX-compatible integrated-terminal shells such as zsh and bash. Remote or virtual resources are not offered by the menu. If a CLI is unavailable, the new terminal still opens and the shell reports its normal command-not-found error.
-
-All four agents remain available in **Send to Agent**. The direct-action settings only control the matching top-level action and update without reloading the extension:
+All four agents remain available in **Select Agent**. The direct-action settings control their matching top-level actions and update without reloading the extension:
 
 - `agentRef.showCodexInTopLevelMenu`
 - `agentRef.showOpenCodeInTopLevelMenu`
@@ -56,18 +57,20 @@ All four agents remain available in **Send to Agent**. The direct-action setting
 
 Each setting defaults to `true`.
 
-### Open File from Active Terminal Title
+### Open File for Terminal
 
-1. Focus an integrated terminal tab and press `Cmd+Ctrl+E` (Mac) or `Ctrl+Cmd+E` (Windows/Linux).
-2. **Title Normalization**: If the terminal title contains `/` (e.g., `parent/feature-branch`), the part after `/` is used as the target title (`feature-branch`).
-3. **Ordered Workspace File Lookup**: The extension searches the workspace for the first matching file in this order:
-   1. Primary search: `**/<tabTitle>*` (excludes `node_modules`).
-   2. Fallbacks in order:
-      - `**/.meta.<tabTitle>.yml`
-      - `**/.meta.<tabTitle>.yaml`
-      - `**/<tabTitle>/spec.md`
-4. **Editor Opening**: Opens and reveals the first matching file in the editor.
-5. **Feedback**: Displays a warning message when no match is found, or an error message when no terminal is active.
+Select the agent terminal, then invoke **Agent Ref: Open File for Terminal** (`agentRef.openTerminalFile`) or press `Cmd+Ctrl+E` (Mac) / `Ctrl+Cmd+E` (Windows/Linux). This opens and focuses its exact bound file, including ignored `.work` artifacts. Selecting a terminal tab alone keeps terminal input focus and does not navigate to a file. The command also works when the terminal is already active.
+
+If the bound file cannot be opened, the extension reports the failure and does not substitute a similarly named file. Bindings exist only for live extension-created terminals during the current extension session. Closing a terminal removes its binding; bindings do not persist across window or extension reload and do not follow file moves.
+
+Unbound terminals, including folder launches and restored terminals, retain the existing title-based workspace lookup. For a title containing `/`, lookup uses its second segment. It searches the following patterns in order and opens the first match:
+
+- `**/<tabTitle>*` (excluding `node_modules`)
+- `**/.meta.<tabTitle>.yml`
+- `**/.meta.<tabTitle>.yaml`
+- `**/<tabTitle>/spec.md`
+
+No match produces a warning, and invoking the command without an active terminal produces an error.
 
 Editor commands always produce an absolute reference. A single line is formatted as `<absolutePath>:<line>` and a range as `<absolutePath>:<start>-<end>`. There are no selectable format or path-style preferences.
 
@@ -76,7 +79,7 @@ Editor commands always produce an absolute reference. A single line is formatted
 - **Agent Ref: Copy and Send Reference** (`agentRef.copySend`) - Default: `Cmd+Shift+R`
 - **Agent Ref: Copy Reference Only** (`agentRef.copyOnly`)
 - **Agent Ref: Send to Terminal Only** (`agentRef.sendOnly`)
-- **Agent Ref: Open File for Terminal** (`agentRef.openTerminalFile`) - Default: `Cmd+Ctrl+E` / `Ctrl+Cmd+E` (when terminal has focus)
+- **Agent Ref: Open File for Terminal** (`agentRef.openTerminalFile`) - Default: `Cmd+Ctrl+E` / `Ctrl+Cmd+E`
 
 ## Configuration
 
@@ -84,9 +87,10 @@ All settings are under the `agentRef` namespace:
 
 - `agentRef.includeColumnRange`: Include column numbers (default: `false`)
 
-### Prompt Settings
+### Legacy Explorer Settings
 
-- `agentRef.prompt`: Prompt template for Explorer agent actions. Every `<PATH>` is replaced with the selected absolute path; without it, `\n path: ${absolutePath}` is appended.
+- `agentRef.prompt`: Retained legacy setting; inactive for Explorer agent launches. No automatic message is sent.
+- `agentRef.workingDirectory`: Retained legacy setting; inactive for Explorer agent launches. Launches require the validated `WORKSPACE_PATH` environment directory described above.
 
 ### Clipboard Settings
 
@@ -101,7 +105,7 @@ All settings are under the `agentRef` namespace:
 
 ### Direct Explorer Actions
 
-The **Send to Agent** submenu always contains all four agents. The four `agentRef.show...InTopLevelMenu` settings independently show or hide their matching direct Explorer action; each defaults to `true` and changes take effect immediately.
+The **Select Agent** submenu always contains all four agents. The four `agentRef.show...InTopLevelMenu` settings independently show or hide their matching direct Explorer action; each defaults to `true` and changes take effect immediately.
 
 ## Line Range Behavior
 

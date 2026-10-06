@@ -13,41 +13,23 @@ export function resolvePath(uri: vscode.Uri): string {
   return normalizePath(path.resolve(uri.fsPath));
 }
 
-/**
- * Resolve the working directory for an agent terminal session.
- *
- * If `configuredWorkingDir` is specified (non-empty string):
- * - If it is relative and `workspaceRoot` is provided, resolves relative to `workspaceRoot`.
- * - Otherwise, resolves it to an absolute path.
- *
- * If `configuredWorkingDir` is empty or undefined:
- * - Falls back to the directory of `targetPath`. If `targetPath` is a directory, returns it directly;
- *   if it is a file (or doesn't exist as a directory), returns its parent directory `path.dirname(targetPath)`.
- */
+/** Resolve only the authoritative workspace exported to the extension host. */
 export function resolveWorkingDirectory(
-  targetPath: string,
-  configuredWorkingDir?: string,
-  workspaceRoot?: string
+  workspacePath: string | undefined = process.env.WORKSPACE_PATH
 ): string {
-  const trimmed = configuredWorkingDir?.trim();
-  if (trimmed) {
-    if (!path.isAbsolute(trimmed) && workspaceRoot) {
-      return normalizePath(path.resolve(workspaceRoot, trimmed));
-    }
-    return normalizePath(path.resolve(trimmed));
+  if (!workspacePath || !workspacePath.trim() || !path.isAbsolute(workspacePath)) {
+    throw new Error('WORKSPACE_PATH must be a nonempty absolute directory path.');
   }
 
-  const normalizedTarget = path.resolve(targetPath);
   try {
-    const stats = fs.statSync(normalizedTarget);
-    if (stats.isDirectory()) {
-      return normalizePath(normalizedTarget);
+    if (!fs.statSync(workspacePath).isDirectory()) {
+      throw new Error('not a directory');
     }
   } catch {
-    // If stat fails (e.g. file doesn't exist yet on disk), fallback to dirname
+    throw new Error('WORKSPACE_PATH must point to an existing, accessible directory.');
   }
 
-  return normalizePath(path.dirname(normalizedTarget));
+  return normalizePath(path.resolve(workspacePath));
 }
 
 /**

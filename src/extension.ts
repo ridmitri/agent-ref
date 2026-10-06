@@ -1,18 +1,21 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { computeLineRange } from './selection';
 import { resolvePath, resolveWorkingDirectory } from './path';
 import { formatRef } from './formatter';
 import {
   AGENT_METADATA,
   AgentMetadata,
-  buildAgentCommand,
-  DEFAULT_PROMPT
+  buildAgentCommand
 } from './agent-command';
 import { getTopLevelMenuContextUpdate } from './menu-preferences';
 import { launchNewTerminal, sendToTerminal, TerminalConfig } from './terminal';
 import { openTerminalFile } from './open-terminal-file';
+import { registerTerminalFileBindingLifecycle } from './terminal-file-binding';
 
 export function activate(context: vscode.ExtensionContext) {
+  registerTerminalFileBindingLifecycle(context);
+
   // Register primary command: copy and send
   const copySend = vscode.commands.registerCommand('agentRef.copySend', () => {
     executeCommand({ copyToClipboard: true, sendToTerminal: true });
@@ -104,28 +107,38 @@ function executeAgentCommand(
 ): Thenable<void> | void {
   if (!uri || uri.scheme !== 'file' || !uri.fsPath) {
     vscode.window.showInformationMessage(
-      'Select a local file or folder in Explorer to send it to an agent.'
+      'Select a local file or folder in Explorer to open an agent.'
     );
     return;
   }
 
-  const config = vscode.workspace.getConfiguration('agentRef');
-  const prompt = config.get<string>('prompt', DEFAULT_PROMPT);
-  const configuredWorkingDirectory = config.get<string>('workingDirectory', '');
+  let cwd: string;
+  try {
+    cwd = resolveWorkingDirectory();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    void vscode.window.showErrorMessage(
+      `Cannot start ${agent.displayLabel}: ${detail} ` +
+      'Export WORKSPACE_PATH in the environment used to start VS Code, then fully restart VS Code so the extension host inherits it.'
+    );
+    return;
+  }
 
-  const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-  const workspaceRoot = workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-
-  const cwd = resolveWorkingDirectory(
-    uri.fsPath,
-    configuredWorkingDirectory,
-    workspaceRoot
-  );
+  let fileUri: vscode.Uri | undefined = uri;
+  try {
+    if (fs.statSync(uri.fsPath).isDirectory()) {
+      fileUri = undefined;
+    }
+  } catch {
+    // Preserve the selected URI when the file is unavailable, so navigation
+    // can report an open failure rather than guess another file by title.
+  }
 
   return launchNewTerminal(
-    buildAgentCommand(agent.target, uri.fsPath, prompt),
+    buildAgentCommand(agent.target),
     cwd,
-    uri.fsPath
+    uri.fsPath,
+    fileUri
   );
 }
 

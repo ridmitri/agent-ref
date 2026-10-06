@@ -21,17 +21,20 @@ test('keeps all Agent Reference Explorer actions in one isolated menu group', ()
   );
 });
 
-test('exposes the prompt setting and omits retired reference preferences', () => {
+test('retains inactive legacy Explorer settings and omits retired reference preferences', () => {
   const settings = manifest.contributes.configuration.properties;
 
   assert.equal(settings['agentRef.prompt'].type, 'string');
   assert.equal(settings['agentRef.workingDirectory'].type, 'string');
   assert.equal(settings['agentRef.workingDirectory'].default, '');
+  for (const key of ['agentRef.prompt', 'agentRef.workingDirectory']) {
+    assert.match(settings[key].description, /Legacy setting, inactive for Explorer agent launches/);
+  }
   assert.equal(settings['agentRef.format'], undefined);
   assert.equal(settings['agentRef.pathStyle'], undefined);
 });
 
-test('contributes terminal-title command, keybinding, chord, and when condition', () => {
+test('contributes explicit terminal-file command and global keybinding', () => {
   const command = manifest.contributes.commands.find(
     (c) => c.command === 'agentRef.openTerminalFile'
   );
@@ -44,5 +47,5 @@ test('contributes terminal-title command, keybinding, chord, and when condition'
   assert.ok(keybinding);
   assert.equal(keybinding.key, 'ctrl+cmd+e');
   assert.equal(keybinding.mac, 'cmd+ctrl+e');
-  assert.equal(keybinding.when, 'terminalFocus');
+  assert.equal(keybinding.when, undefined);
 });

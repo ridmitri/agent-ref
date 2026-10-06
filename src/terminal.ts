@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { resolveTerminalName } from './repository';
+import { terminalFileBindings } from './terminal-file-binding';
 
 export type TerminalConfig = {
   focus: boolean;
@@ -37,23 +38,28 @@ export function sendToTerminal(text: string, config: TerminalConfig): void {
  *
  * This is intentionally separate from sendToTerminal: Explorer agent actions
  * must always get a fresh terminal and execute immediately, independently of
- * the existing terminal configuration settings. When cwd is provided, the terminal
- * is initialized in that working directory and titled with the Git repository
- * folder name from `git rev-parse --show-toplevel` on the supplied path.
- * Nested paths resolve to that repository root. Otherwise the title uses
- * `parentFolder/filename` for a file or the folder path for a directory.
+ * the existing terminal configuration settings. The selected resource supplies
+ * the filename title, independently of cwd. Files retain their original URI
+ * before dispatch and reveal so navigation does not depend on that title.
  */
 export async function launchNewTerminal(
   command: string,
-  cwd?: string,
-  targetPath?: string
+  cwd: string,
+  targetPath?: string,
+  fileUri?: vscode.Uri
 ): Promise<void> {
   const terminalName = await resolveTerminalName(cwd, targetPath);
-  const terminal = cwd
-    ? vscode.window.createTerminal({ name: terminalName, cwd })
-    : vscode.window.createTerminal(terminalName);
+  const terminal = vscode.window.createTerminal({ name: terminalName, cwd });
 
-  terminal.sendText(command, true);
+  if (fileUri) {
+    terminalFileBindings.bind(terminal, fileUri);
+  }
+
+  // Shell startup files may change directories after createTerminal applies cwd.
+  // Reset it immediately before launching, and stop if cd fails. POSIX quoting
+  // preserves spaces, apostrophes and shell metacharacters in workspace paths.
+  const quotedCwd = "'" + cwd.replace(/'/g, "'\\''") + "'";
+  terminal.sendText(`cd -- ${quotedCwd} && ${command}`, true);
   terminal.show(false);
 
   // `show(false)` activates and reveals the new terminal, but does not
