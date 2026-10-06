@@ -139,6 +139,18 @@ npm install
 npm run compile
 ```
 
+### Local secret scanning
+
+Install the official Gitleaks CLI (project version: `8.30.1`) and ensure `gitleaks` and `npm` are on the `PATH` used to launch Git. For example, install with `brew install gitleaks` and check with `gitleaks version`. Then install the native hook in this checkout:
+
+```bash
+hooks_dir="$(git rev-parse --git-path hooks)"
+cp .githooks/pre-push "$hooks_dir/pre-push"
+chmod +x "$hooks_dir/pre-push"
+```
+
+The hook runs `npm run gitleaks` for pushes to `origin`. Gitleaks scans all history reachable from local refs, including root and merge commits, so an old finding on another local branch can block a push. Scanning runs locally with the installed executable and project config; it does not upload source code.
+
 ### Testing
 
 Press `F5` in VS Code to launch Extension Development Host.

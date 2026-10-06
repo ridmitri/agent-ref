@@ -1,0 +1,4 @@
+title = "agent-ref secret scanning"
+
+[extend]
+useDefault = true

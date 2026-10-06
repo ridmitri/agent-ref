@@ -20,7 +20,7 @@ jobs:
           cache: npm
 
       - name: Scan tracked files for private data
-        run: bash scripts/scan-private-data.sh
+        run: node scripts/scan-private-data.js
 
       - run: npm ci
       - run: npm run lint

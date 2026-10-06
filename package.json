@@ -196,7 +196,10 @@
     "test": "npm run compile && node --test test/*.test.js",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "typecheck": "tsc --noEmit -p ./"
+    "typecheck": "tsc --noEmit -p ./",
+    "privacy": "node scripts/scan-private-data.js",
+    "gitleaks": "gitleaks git --config .gitleaks.toml --redact=100 --no-banner --log-opts='--all --full-history --root -m' .",
+    "security": "npm run privacy && npm run gitleaks"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",

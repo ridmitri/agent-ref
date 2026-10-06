@@ -4,3 +4,4 @@ out
 *.vsix
 build/
 .DS_Store
+.privacy_checks
