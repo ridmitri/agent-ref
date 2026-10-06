@@ -1,63 +1,49 @@
 const assert = require('node:assert/strict');
+const Module = require('node:module');
 const { test } = require('node:test');
-const path = require('node:path');
-const os = require('node:os');
-const fs = require('node:fs');
-const { resolveWorkingDirectory } = require('../out/path.js');
 
-test('resolves fallback working directory for a directory path', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ref-test-'));
+function loadResolver(isDirectory) {
+  const originalLoad = Module._load;
+  delete require.cache[require.resolve('../out/path.js')];
+  Module._load = function load(request, parent, isMain) {
+    if (request === 'fs') {
+      return {
+        statSync(selected) {
+          if (selected.endsWith('missing.md')) throw new Error('not found');
+          return { isDirectory: () => isDirectory };
+        }
+      };
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
   try {
-    const resolved = resolveWorkingDirectory(tmpDir);
-    assert.equal(resolved, tmpDir.replace(/\\/g, '/'));
+    return require('../out/path.js').resolveWorkingDirectory;
   } finally {
-    fs.rmdirSync(tmpDir);
+    Module._load = originalLoad;
   }
+}
+
+test('resolves an existing absolute authoritative workspace directory', () => {
+  const resolveWorkingDirectory = loadResolver(true);
+  assert.equal(resolveWorkingDirectory('/global-workspace'), '/global-workspace');
+  assert.equal(resolveWorkingDirectory("/global-workspace/John's notes"), "/global-workspace/John's notes");
 });
 
-test('resolves fallback working directory for a file path (parent directory)', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ref-test-'));
-  const filePath = path.join(tmpDir, 'test-file.txt');
-  fs.writeFileSync(filePath, 'hello');
-  try {
-    const resolved = resolveWorkingDirectory(filePath);
-    assert.equal(resolved, tmpDir.replace(/\\/g, '/'));
-  } finally {
-    fs.unlinkSync(filePath);
-    fs.rmdirSync(tmpDir);
+test('rejects empty, relative, missing and nondirectory workspace paths without fallback', () => {
+  const resolveWorkingDirectory = loadResolver(true);
+  for (const invalid of ['', '   ', 'relative/workspace', '~/work', '/local/missing.md']) {
+    assert.throws(() => resolveWorkingDirectory(invalid), /WORKSPACE_PATH/);
   }
+  assert.throws(() => loadResolver(false)('/local/file.md'), /WORKSPACE_PATH/);
 });
 
-test('resolves configured absolute working directory', () => {
-  const targetFile = '/Users/test/workspace/src/app.ts';
-  const customDir = '/Users/test/custom/root';
-  assert.equal(
-    resolveWorkingDirectory(targetFile, customDir),
-    '/Users/test/custom/root'
-  );
-});
 
-test('resolves configured relative working directory against workspaceRoot', () => {
-  const targetFile = '/Users/test/workspace/src/app.ts';
-  const workspaceRoot = '/Users/test/workspace';
-  const customRelative = 'packages/core';
-  assert.equal(
-    resolveWorkingDirectory(targetFile, customRelative, workspaceRoot),
-    '/Users/test/workspace/packages/core'
-  );
-});
-
-test('treats empty or whitespace configured working directory as unset', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ref-test-'));
-  const filePath = path.join(tmpDir, 'test-file.txt');
-  fs.writeFileSync(filePath, 'hello');
+test('missing WORKSPACE_PATH in the host environment is rejected', () => {
+  const previous = process.env.WORKSPACE_PATH;
+  delete process.env.WORKSPACE_PATH;
   try {
-    assert.equal(
-      resolveWorkingDirectory(filePath, '   '),
-      tmpDir.replace(/\\/g, '/')
-    );
+    assert.throws(() => loadResolver(true)(), /WORKSPACE_PATH/);
   } finally {
-    fs.unlinkSync(filePath);
-    fs.rmdirSync(tmpDir);
+    if (previous !== undefined) process.env.WORKSPACE_PATH = previous;
   }
 });

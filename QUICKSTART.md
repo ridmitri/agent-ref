@@ -29,15 +29,12 @@ In the Extension Development Host window:
    - Clipboard contains the reference
    - Terminal receives the reference (without pressing Enter)
 
-### 4. Configure the prompt and references
+### 4. Configure editor references
 
-Open Command Palette (`Cmd+Shift+P`) and search for:
-- "Preferences: Open Settings (UI)"
-- Search for "agentRef"
-- Editor references always use the absolute format `<absolutePath>:<line>` or `<absolutePath>:<start>-<end>` (with optional columns when `agentRef.includeColumnRange` is enabled).
-- Edit `agentRef.prompt` to set the prompt sent to an Explorer agent.
+Open Command Palette (`Cmd+Shift+P`) and choose **Preferences: Open Settings (UI)**, then search for `agentRef`.
 
-Use `<PATH>` wherever the selected absolute file or folder path should appear. Every literal `<PATH>` is replaced. If it is omitted, the extension appends exactly `\n path: ${absolutePath}`. The complete prompt is passed as one shell argument.
+- Editor references use `<absolutePath>:<line>` or `<absolutePath>:<start>-<end>`, with optional columns when `agentRef.includeColumnRange` is enabled.
+- `agentRef.prompt` and `agentRef.workingDirectory` remain as legacy settings and are inactive for Explorer agent launches. Existing values cannot send an automatic message or override the launch directory.
 
 ### 5. Test Different Commands
 
@@ -46,40 +43,48 @@ Open Command Palette and try:
 - "Agent Ref: Copy Reference Only"
 - "Agent Ref: Send to Terminal Only"
 
-### 6. Test the Explorer agent menu
+### 6. Test the Explorer agent menu and return to the selected file
 
-Before testing, install the CLI for every agent you plan to use and make each executable available on the integrated terminal's `PATH`:
+Install the CLI for each agent you plan to use and make its executable available on the integrated terminal's `PATH`:
 
 - Codex CLI (`codex`)
 - OpenCode CLI (`opencode`)
 - Claude Code CLI (`claude`)
-- Cursor CLI (`cursor`)
+- Cursor CLI (`agent`)
 
-Configure the `context-menu-loader` skill for each CLI that uses it; the extension does not install or configure these prerequisites.
+Before launching the Extension Development Host, export `WORKSPACE_PATH` in the environment used to start VS Code (for example `export WORKSPACE_PATH=/Users/dryzhov/work`). Fully quit and restart VS Code to ensure the extension host inherits it. Use a POSIX integrated shell such as zsh or bash.
 
 In the Extension Development Host:
 
-1. Right-click a local file or folder in Explorer.
-2. Open **Send to Agent**.
-3. Choose **in Codex**, **in OpenCode**, **in Claude Code**, or **in Cursor**. By default, matching direct actions also appear immediately below the flyout.
-4. Confirm that a new, focused terminal titled with the Git repository folder from `git rev-parse --show-toplevel` (or `parentFolder/filename` for a file / the selected folder path when Git reports that the path is not a repository) appears and runs the command immediately.
+1. Right-click a local file in Explorer, open **Select Agent**, and choose an **Open in ...** action. Matching direct actions are also available by default.
+2. Confirm that a fresh terminal uses the filename as its title. Names beginning with `.meta.` omit that prefix and a trailing `.yml` or `.yaml`; other filenames retain their extensions. It starts the CLI in `WORKSPACE_PATH` and awaits your input, even when the selected file is under another open project root.
+3. Assign the task in the agent chat. The extension sends no automatic message or selected path to the agent.
+4. Select another terminal, then return to the agent terminal. Confirm that tab selection keeps terminal input focus and does not open a file.
+5. Invoke **Agent Ref: Open File for Terminal** from the Command Palette or press `Cmd+Ctrl+E`. Confirm that the editor opens and focuses the exact selected file. Invoke it again with the terminal already active.
+6. Repeat with two different files named `spec.md`, a task `.meta` file, and a file in another workspace root. Each terminal returns to its own selected file, even if its title is renamed or its file is an ignored `.work` artifact.
 
-The clicked resource is sent as an absolute path. This menu is limited to local `file` resources and POSIX-compatible integrated-terminal shells such as zsh or bash. Paths are shell-quoted as one prompt argument, including paths containing spaces, quotes, apostrophes, or shell metacharacters. If the CLI is missing, the terminal opens but reports the shell's normal command-not-found error.
+Metadata is optional and is not parsed; ordinary files and `.meta` files follow the same binding behavior. If a bound file is deleted or cannot open, the command reports the failure without opening another similarly named file.
 
-The **Send to Agent** submenu always contains all four agents. To hide a direct action, set its matching preference to `false`; changes take effect without reloading VS Code:
+Every launch requires `WORKSPACE_PATH` from the extension host environment to be an absolute existing directory. The same directory is used in multi-root workspaces, for outside-root resources, and with no project open. Missing or invalid values produce an error without creating a terminal. Folder launches use the folder basename as the title and have no text-file binding.
+
+Bindings last only for live extension-created terminals in the current extension session. Closing a terminal removes its binding, and bindings do not persist across reload or follow file moves. Unbound terminals, including folder launches and restored terminals, retain the existing title-based search through filename prefixes, `.meta` files, and `spec.md`.
+
+Only local `file` resources are supported by the Explorer menu. If a CLI is missing, the terminal opens and the shell reports its normal command-not-found error.
+
+The **Select Agent** submenu always contains all four agents. To hide a direct action, set its matching preference to `false`; changes take effect without reloading VS Code:
 
 - `agentRef.showCodexInTopLevelMenu`
 - `agentRef.showOpenCodeInTopLevelMenu`
 - `agentRef.showClaudeCodeInTopLevelMenu`
 - `agentRef.showCursorInTopLevelMenu`
 
-The invocation syntax verified in the release environment on 2026-09-03 is:
+The shell bootstrap explicitly changes to the validated workspace before launching the CLI; if that change fails, the agent is not started. This protects against shell startup files changing directories:
 
 ```bash
-codex '<PROMPT>'
-opencode --prompt '<PROMPT>'
-claude '<PROMPT>'
-cursor '<PROMPT>'
+cd -- '/Users/dryzhov/work' && codex
+cd -- '/Users/dryzhov/work' && opencode
+cd -- '/Users/dryzhov/work' && claude
+cd -- '/Users/dryzhov/work' && agent
 ```
 
 ## Installing Locally
@@ -102,11 +107,10 @@ This creates `agent-ref-1.0.0.vsix`.
 
 ## Configuration Examples
 
-### Explorer agent prompt and menu visibility
+### Explorer agent menu visibility
 
 ```json
 {
-  "agentRef.prompt": "Review this resource: <PATH>",
   "agentRef.showCursorInTopLevelMenu": false
 }
 ```
@@ -141,13 +145,13 @@ This creates `agent-ref-1.0.0.vsix`.
 
 ### Explorer agent command fails
 
-- Run `codex --version`, `opencode --version`, `claude --version`, or `cursor --version` in the integrated terminal to confirm the selected CLI is installed and on `PATH`.
-- Confirm that `context-menu-loader` is available to the selected CLI.
+- Ensure `WORKSPACE_PATH` is exported to the environment used to start VS Code and points to an absolute existing directory. Setting it only inside an already-open terminal does not update the extension host; fully quit and restart VS Code after exporting it.
+- Run `codex --version`, `opencode --version`, `claude --version`, or `agent --version` in the integrated terminal to confirm the selected CLI is installed and on `PATH`.
 - The Explorer menu intentionally supports only local files and folders; it is hidden for remote or virtual resources.
 
 ## Next Steps
 
 1. Use the extension in your daily workflow
-2. Adjust the prompt and direct-menu visibility settings to your preference
+2. Adjust editor-reference and direct-menu visibility settings to your preference
 3. Consider publishing to VS Code Marketplace (optional)
 4. Report issues or suggest features

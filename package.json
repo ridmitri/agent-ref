@@ -2,7 +2,7 @@
   "name": "agent-ref",
   "displayName": "Agent Reference",
   "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
-  "version": "1.0.16-alpha.8",
+  "version": "1.0.16-alpha.12",
   "publisher": "ridmitri",
   "repository": {
     "type": "git",
@@ -120,8 +120,7 @@
       {
         "command": "agentRef.openTerminalFile",
         "key": "ctrl+cmd+e",
-        "mac": "cmd+ctrl+e",
-        "when": "terminalFocus"
+        "mac": "cmd+ctrl+e"
       }
     ],
     "configuration": {
@@ -130,7 +129,7 @@
         "agentRef.workingDirectory": {
           "type": "string",
           "default": "",
-          "description": "Working directory for agent terminal sessions. If unset or empty, falls back to the selected folder or the parent folder of the selected file. Can be set in VS Code workspace configuration."
+          "description": "Legacy setting, inactive for Explorer agent launches. Launches require WORKSPACE_PATH in the extension host environment to be an absolute existing directory; invalid or missing values prevent launch."
         },
         "agentRef.copyToClipboard": {
           "type": "boolean",
@@ -165,7 +164,7 @@
         "agentRef.prompt": {
           "type": "string",
           "default": "For this session, \"the path\" refers to \"<PATH>\". Do not inspect it yet; wait for a later request.",
-          "description": "Prompt sent to the selected agent. Use <PATH> to insert the selected file or folder path."
+          "description": "Legacy setting, inactive for Explorer agent launches. Agents start without an automatic message or selected path."
         },
         "agentRef.showCodexInTopLevelMenu": {
           "type": "boolean",

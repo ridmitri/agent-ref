@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.16-alpha.10] - 2026-09-14
+
+### Changed
+
+- Made the **Agent Ref: Open File for Terminal** keybinding available globally, regardless of focus.
+
+## [1.0.16-alpha.9] - 2026-09-14
+
+### Changed
+
+- Rebuilt the extension package.
+
 ## [1.0.16-alpha.8] - 2026-09-11
 
 ### Added
