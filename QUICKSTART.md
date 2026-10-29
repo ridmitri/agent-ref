@@ -52,7 +52,7 @@ Install the CLI for each agent you plan to use and make its executable available
 - Claude Code CLI (`claude`)
 - Cursor CLI (`agent`)
 
-Before launching the Extension Development Host, export `WORKSPACE_PATH` in the environment used to start VS Code (for example `export WORKSPACE_PATH=/Users/dryzhov/work`). Fully quit and restart VS Code to ensure the extension host inherits it. Use a POSIX integrated shell such as zsh or bash.
+Before launching the Extension Development Host, export `WORKSPACE_PATH` in the environment used to start VS Code (for example `export WORKSPACE_PATH=/Users/me/work`). Fully quit and restart VS Code to ensure the extension host inherits it. Use a POSIX integrated shell such as zsh or bash.
 
 In the Extension Development Host:
 
@@ -81,10 +81,10 @@ The **Select Agent** submenu always contains all four agents. To hide a direct a
 The shell bootstrap explicitly changes to the validated workspace before launching the CLI; if that change fails, the agent is not started. This protects against shell startup files changing directories:
 
 ```bash
-cd -- '/Users/dryzhov/work' && codex
-cd -- '/Users/dryzhov/work' && opencode
-cd -- '/Users/dryzhov/work' && claude
-cd -- '/Users/dryzhov/work' && agent
+cd -- '/Users/me/work' && codex
+cd -- '/Users/me/work' && opencode
+cd -- '/Users/me/work' && claude
+cd -- '/Users/me/work' && agent
 ```
 
 ## Installing Locally

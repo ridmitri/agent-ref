@@ -28,7 +28,7 @@ Quickly copy and send absolute file references to AI coding agents, or launch an
 
 A file launch binds the new terminal to the exact selected file URI. You can choose any ordinary file or a task `.meta` file; metadata is optional and is not parsed. Files with the same filename receive the same visible terminal title but retain distinct bindings. Renaming a terminal does not change its bound file.
 
-Every agent starts in the absolute directory specified by `WORKSPACE_PATH` in the VS Code extension host environment, regardless of the selected file or open project roots. Set it before starting VS Code, for example `export WORKSPACE_PATH=/Users/dryzhov/work`, then fully quit and restart VS Code so the host inherits it. The path must exist and be a directory. Missing, relative, inaccessible, or invalid values produce an error and prevent terminal creation. Folder launches use the folder basename as the title and have no file binding.
+Every agent starts in the absolute directory specified by `WORKSPACE_PATH` in the VS Code extension host environment, regardless of the selected file or open project roots. Set it before starting VS Code, for example `export WORKSPACE_PATH=/Users/me/work`, then fully quit and restart VS Code so the host inherits it. The path must exist and be a directory. Missing, relative, inaccessible, or invalid values produce an error and prevent terminal creation. Folder launches use the folder basename as the title and have no file binding.
 
 Install the corresponding CLI and make its executable available on the integrated terminal's `PATH`:
 
@@ -40,10 +40,10 @@ Install the corresponding CLI and make its executable available on the integrate
 The extension resets the shell to the validated workspace immediately before starting the selected CLI, so shell startup scripts cannot leave the agent in a different directory. It uses a quoted `cd -- <workspace> && <executable>` bootstrap in the integrated POSIX shell (such as zsh or bash):
 
 ```bash
-cd -- '/Users/dryzhov/work' && codex
-cd -- '/Users/dryzhov/work' && opencode
-cd -- '/Users/dryzhov/work' && claude
-cd -- '/Users/dryzhov/work' && agent
+cd -- '/Users/me/work' && codex
+cd -- '/Users/me/work' && opencode
+cd -- '/Users/me/work' && claude
+cd -- '/Users/me/work' && agent
 ```
 
 No startup message or selected path is sent to the agent automatically. Use the agent chat to assign your task. Explorer actions support local `file` resources. If a CLI is unavailable, the new terminal opens and the shell reports its normal command-not-found error.
