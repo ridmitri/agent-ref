@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.16] - 2026-10-29
+
+### Added
+
+- Added **Set as Terminal Title** to the Explorer Agent section. It renames the active terminal to the selected file's basename, including its extension.
+- Added the global `Ctrl+Alt+T` shortcut (`Cmd+Ctrl+T` on macOS) to set the active terminal title from the active saved file.
+- Added context-menu commands to copy or send selected text from the built-in Markdown preview.
+
+### Fixed
+
+- Resolve terminal-linked files using the final path segment when the terminal title contains multiple slashes.
+
 ## [1.0.16-alpha.10] - 2026-09-14
 
 ### Changed

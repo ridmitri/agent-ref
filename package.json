@@ -2,7 +2,7 @@
   "name": "agent-ref",
   "displayName": "Agent Reference",
   "description": "Copy and send file references to AI coding agents (Claude Code, etc.) running in terminal.",
-  "version": "1.0.16-alpha.12",
+  "version": "1.0.16",
   "publisher": "ridmitri",
   "repository": {
     "type": "git",
@@ -19,6 +19,11 @@
   "icon": "./resources/icon.png",
   "license": "./LICENCE",
   "contributes": {
+    "markdown": {
+      "previewScripts": [
+        "./media/preview-selection.js"
+      ]
+    },
     "commands": [
       {
         "command": "agentRef.copySend",
@@ -51,6 +56,10 @@
       {
         "command": "agentRef.openTerminalFile",
         "title": "Agent Ref: Open File for Terminal"
+      },
+      {
+        "command": "agentRef.setTerminalTitleFromActiveFile",
+        "title": "Set as Terminal Title"
       }
     ],
     "submenus": [
@@ -85,6 +94,11 @@
           "command": "agentRef.sendToCursor",
           "when": "resourceScheme == file && agentRef.showCursorInTopLevelMenu",
           "group": "agentRef@5"
+        },
+        {
+          "command": "agentRef.setTerminalTitleFromActiveFile",
+          "when": "resourceScheme == file && !explorerResourceIsFolder",
+          "group": "agentRef@6"
         }
       ],
       "agentRef.sendToAgent": [
@@ -108,6 +122,23 @@
           "when": "resourceScheme == file",
           "group": "agent@4"
         }
+      ],
+      "webview/context": [
+        {
+          "command": "agentRef.copySend",
+          "when": "webviewId == 'markdown.preview' && agentRefHasPreviewSelection",
+          "group": "agentRef@1"
+        },
+        {
+          "command": "agentRef.copyOnly",
+          "when": "webviewId == 'markdown.preview' && agentRefHasPreviewSelection",
+          "group": "agentRef@1"
+        },
+        {
+          "command": "agentRef.sendOnly",
+          "when": "webviewId == 'markdown.preview' && agentRefHasPreviewSelection",
+          "group": "agentRef@1"
+        }
       ]
     },
     "keybindings": [
@@ -121,6 +152,11 @@
         "command": "agentRef.openTerminalFile",
         "key": "ctrl+cmd+e",
         "mac": "cmd+ctrl+e"
+      },
+      {
+        "command": "agentRef.setTerminalTitleFromActiveFile",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+ctrl+t"
       }
     ],
     "configuration": {
@@ -199,7 +235,7 @@
     "typecheck": "tsc --noEmit -p ./"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@types/node": "^18.19.130",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",

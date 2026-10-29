@@ -27,7 +27,7 @@ export async function openTerminalFile(): Promise<void> {
   }
 
   const rawTitle = terminal.name;
-  const tabTitle = rawTitle.includes('/') ? rawTitle.split('/')[1] : rawTitle;
+  const tabTitle = rawTitle.includes('/') ? rawTitle.split('/').at(-1) : rawTitle;
 
   const candidates = [
     `**/${tabTitle}*`,

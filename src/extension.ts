@@ -11,30 +11,49 @@ import {
 import { getTopLevelMenuContextUpdate } from './menu-preferences';
 import { launchNewTerminal, sendToTerminal, TerminalConfig } from './terminal';
 import { openTerminalFile } from './open-terminal-file';
+import {
+  SET_TERMINAL_TITLE_COMMAND,
+  setTerminalTitleFromActiveFile
+} from './set-terminal-title';
 import { registerTerminalFileBindingLifecycle } from './terminal-file-binding';
+import {
+  isActiveMarkdownPreview,
+  parsePreviewSelectionArgument
+} from './preview-selection';
 
 export function activate(context: vscode.ExtensionContext) {
   registerTerminalFileBindingLifecycle(context);
 
   // Register primary command: copy and send
-  const copySend = vscode.commands.registerCommand('agentRef.copySend', () => {
-    executeCommand({ copyToClipboard: true, sendToTerminal: true });
-  });
+  const copySend = vscode.commands.registerCommand(
+    'agentRef.copySend',
+    (argument?: unknown) =>
+      executeCommand({ copyToClipboard: true, sendToTerminal: true }, argument)
+  );
 
   // Register secondary command: copy only
-  const copyOnly = vscode.commands.registerCommand('agentRef.copyOnly', () => {
-    executeCommand({ copyToClipboard: true, sendToTerminal: false });
-  });
+  const copyOnly = vscode.commands.registerCommand(
+    'agentRef.copyOnly',
+    (argument?: unknown) =>
+      executeCommand({ copyToClipboard: true, sendToTerminal: false }, argument)
+  );
 
   // Register secondary command: send only
-  const sendOnly = vscode.commands.registerCommand('agentRef.sendOnly', () => {
-    executeCommand({ copyToClipboard: false, sendToTerminal: true });
-  });
+  const sendOnly = vscode.commands.registerCommand(
+    'agentRef.sendOnly',
+    (argument?: unknown) =>
+      executeCommand({ copyToClipboard: false, sendToTerminal: true }, argument)
+  );
 
   // Register terminal-file opening command
   const openTerminalFileCmd = vscode.commands.registerCommand(
     'agentRef.openTerminalFile',
     openTerminalFile
+  );
+
+  const setTerminalTitleCmd = vscode.commands.registerCommand(
+    SET_TERMINAL_TITLE_COMMAND,
+    setTerminalTitleFromActiveFile
   );
 
   // Explorer commands receive the selected resource as a URI. Keep this
@@ -54,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
     copyOnly,
     sendOnly,
     openTerminalFileCmd,
+    setTerminalTitleCmd,
     ...agentCommands
   );
 }
@@ -147,49 +167,82 @@ type CommandOptions = {
   sendToTerminal: boolean;
 };
 
-/**
- * Main command execution logic
- */
-function executeCommand(options: CommandOptions): void {
-  const editor = vscode.window.activeTextEditor;
+const PREVIEW_CONTEXT_GUIDANCE =
+  'To send selected text from a Markdown preview, select it, right-click in the preview, and choose an Agent Ref command.';
 
-  if (!editor) {
-    vscode.window.showInformationMessage('No active editor');
+/**
+ * Main command execution logic.
+ */
+async function executeCommand(
+  options: CommandOptions,
+  argument?: unknown
+): Promise<void> {
+  // Parse the context-menu payload before considering the active editor. A
+  // malformed preview payload must never fall through to a side-by-side editor.
+  const previewSelection = parsePreviewSelectionArgument(argument);
+  if (previewSelection.kind === 'invalid-preview-context') {
+    vscode.window.showInformationMessage(PREVIEW_CONTEXT_GUIDANCE);
     return;
   }
 
-  // Get configuration
+  if (
+    previewSelection.kind === 'not-preview' &&
+    isActiveMarkdownPreview()
+  ) {
+    vscode.window.showInformationMessage(PREVIEW_CONTEXT_GUIDANCE);
+    return;
+  }
+
+  // Snapshot settings before any asynchronous clipboard work.
+  const editor = vscode.window.activeTextEditor;
   const config = vscode.workspace.getConfiguration('agentRef');
   const includeColumns = config.get<boolean>('includeColumnRange', false);
   const copyEnabled = options.copyToClipboard &&
     config.get<boolean>('copyToClipboard', true);
+  const terminalSendEnabled = config.get('terminal.send', true);
+  const terminalConfig: TerminalConfig = {
+    focus: config.get('terminal.focus', true),
+    send: terminalSendEnabled,
+    addNewLine: config.get('terminal.addNewLine', false),
+    name: config.get('terminal.name', 'Agent')
+  };
 
-  // Compute line range
-  const range = computeLineRange(editor, includeColumns);
+  let payload: string;
+  if (previewSelection.kind === 'selection') {
+    payload = previewSelection.text;
+  } else {
+    if (!editor) {
+      vscode.window.showInformationMessage('No active editor');
+      return;
+    }
 
-  // Resolve path
-  const absolutePath = resolvePath(editor.document.uri);
-
-  // Format reference
-  const reference = formatRef({
-    path: absolutePath,
-    range
-  });
-
-  // Copy to clipboard
-  if (copyEnabled) {
-    vscode.env.clipboard.writeText(reference);
+    // Preserve the existing source-editor reference format.
+    const range = computeLineRange(editor, includeColumns);
+    const absolutePath = resolvePath(editor.document.uri);
+    payload = formatRef({ path: absolutePath, range });
   }
 
-  // Send to terminal
-  if (options.sendToTerminal) {
-    const terminalConfig: TerminalConfig = {
-      focus: config.get('terminal.focus', true),
-      send: config.get('terminal.send', true),
-      addNewLine: config.get('terminal.addNewLine', false),
-      name: config.get('terminal.name', 'Agent')
-    };
-    sendToTerminal(reference, terminalConfig);
+  // Copy variants write the chosen payload; send-only never accesses clipboard.
+  if (copyEnabled) {
+    try {
+      await vscode.env.clipboard.writeText(payload);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      void vscode.window.showErrorMessage(
+        `Could not copy text to the clipboard: ${detail}`
+      );
+      return;
+    }
+  }
+
+  try {
+    if (options.sendToTerminal) {
+      sendToTerminal(payload, terminalConfig);
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    void vscode.window.showErrorMessage(`Could not send text to the terminal: ${detail}`);
+    return;
   }
 
   // Show status message
@@ -197,13 +250,13 @@ function executeCommand(options: CommandOptions): void {
   if (copyEnabled) {
     action.push('Copied');
   }
-  if (options.sendToTerminal && config.get('terminal.send', true)) {
+  if (options.sendToTerminal && terminalSendEnabled) {
     action.push('sent to terminal');
   }
 
   if (action.length > 0) {
     vscode.window.setStatusBarMessage(
-      `${action.join(' and ')}: ${reference}`,
+      `${action.join(' and ')}: ${payload}`,
       3000
     );
   }

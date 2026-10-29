@@ -74,6 +74,8 @@ No match produces a warning, and invoking the command without an active terminal
 
 Editor commands always produce an absolute reference. A single line is formatted as `<absolutePath>:<line>` and a range as `<absolutePath>:<start>-<end>`. There are no selectable format or path-style preferences.
 
+In the built-in Markdown preview, select rendered text, right-click the selection, and choose **Agent Ref: Copy and Send Reference**, **Agent Ref: Copy Reference Only**, or **Agent Ref: Send to Terminal Only**. Preview commands send the selected rendered text; commands invoked from a text editor continue to use file and line references. The two copy commands update the clipboard when copying is enabled; **Send to Terminal Only** leaves it unchanged. A preview invocation from the Command Palette has no selection context and shows guidance to use the preview context menu. The existing send-only keyboard shortcut remains scoped to text editors and does not invoke preview selection.
+
 ### Commands
 
 - **Agent Ref: Copy and Send Reference** (`agentRef.copySend`) - Default: `Cmd+Shift+R`
