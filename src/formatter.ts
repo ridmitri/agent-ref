@@ -12,6 +12,11 @@ export function formatRef(config: FormatConfig): string {
   return `${config.path}:${formatRange(config.range)}`;
 }
 
+/** Format rendered Markdown text with its backing source file, without a range. */
+export function formatPreviewSelection(path: string, text: string): string {
+  return `${path}:<selected_text>${text}</selected_text>`;
+}
+
 /**
  * Format line range with optional column information
  */

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { computeLineRange } from './selection';
 import { resolvePath, resolveWorkingDirectory } from './path';
-import { formatRef } from './formatter';
+import { formatPreviewSelection, formatRef } from './formatter';
 import {
   AGENT_METADATA,
   AgentMetadata,
@@ -17,7 +17,8 @@ import {
 } from './set-terminal-title';
 import { registerTerminalFileBindingLifecycle } from './terminal-file-binding';
 import {
-  isActiveMarkdownPreview,
+  acquirePreviewSelection,
+  getActiveMarkdownPreview,
   parsePreviewSelectionArgument
 } from './preview-selection';
 
@@ -168,7 +169,7 @@ type CommandOptions = {
 };
 
 const PREVIEW_CONTEXT_GUIDANCE =
-  'To send selected text from a Markdown preview, select it, right-click in the preview, and choose an Agent Ref command.';
+  'Could not get selected text from the Markdown preview. Select text in the preview and try again.';
 
 /**
  * Main command execution logic.
@@ -180,15 +181,8 @@ async function executeCommand(
   // Parse the context-menu payload before considering the active editor. A
   // malformed preview payload must never fall through to a side-by-side editor.
   const previewSelection = parsePreviewSelectionArgument(argument);
+  const activePreview = getActiveMarkdownPreview();
   if (previewSelection.kind === 'invalid-preview-context') {
-    vscode.window.showInformationMessage(PREVIEW_CONTEXT_GUIDANCE);
-    return;
-  }
-
-  if (
-    previewSelection.kind === 'not-preview' &&
-    isActiveMarkdownPreview()
-  ) {
     vscode.window.showInformationMessage(PREVIEW_CONTEXT_GUIDANCE);
     return;
   }
@@ -208,8 +202,35 @@ async function executeCommand(
   };
 
   let payload: string;
-  if (previewSelection.kind === 'selection') {
-    payload = previewSelection.text;
+  if (previewSelection.kind === 'selection' || activePreview) {
+    try {
+      const selectedText = previewSelection.kind === 'selection'
+        ? previewSelection.text
+        : (await acquirePreviewSelection(activePreview!.tab)).text;
+      if (activePreview && getActiveMarkdownPreview()?.tab !== activePreview.tab) {
+        throw new Error('The active Markdown preview changed before delivery.');
+      }
+      let sourcePath = activePreview?.path;
+      if (!sourcePath) {
+        // The legacy Markdown webview input has no public source URI. The
+        // built-in command returns the source editor it opens; never guess
+        // from window.activeTextEditor, which may be an unrelated side editor.
+        if (!activePreview || getActiveMarkdownPreview()?.tab !== activePreview.tab) {
+          throw new Error('Could not identify the active Markdown preview source.');
+        }
+        const opened = await vscode.commands.executeCommand<unknown>('markdown.showSource');
+        const document = (opened as vscode.TextEditor | undefined)?.document;
+        if (!document || document.languageId !== 'markdown') {
+          throw new Error('Could not resolve the Markdown preview source file.');
+        }
+        sourcePath = resolvePath(document.uri);
+      }
+      payload = formatPreviewSelection(sourcePath, selectedText);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      void vscode.window.showInformationMessage(`${PREVIEW_CONTEXT_GUIDANCE} ${detail}`);
+      return;
+    }
   } else {
     if (!editor) {
       vscode.window.showInformationMessage('No active editor');
@@ -219,10 +240,14 @@ async function executeCommand(
     // Preserve the existing source-editor reference format.
     const range = computeLineRange(editor, includeColumns);
     const absolutePath = resolvePath(editor.document.uri);
-    payload = formatRef({ path: absolutePath, range });
+    const selectedText = editor.document.getText(editor.selection);
+    payload = selectedText.length > 0
+      ? formatPreviewSelection(absolutePath, selectedText)
+      : formatRef({ path: absolutePath, range });
   }
 
-  // Copy variants write the chosen payload; send-only never accesses clipboard.
+  // Copy variants write the chosen payload. Send-only restores the temporary
+  // native-copy selection before delivery and never leaves it on the clipboard.
   if (copyEnabled) {
     try {
       await vscode.env.clipboard.writeText(payload);

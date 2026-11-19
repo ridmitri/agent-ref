@@ -123,7 +123,7 @@ test('script reevaluation replaces its listener instead of accumulating handlers
 
 test('manifest registers the script and all existing commands for selected preview text', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
-  const script = manifest.contributes.markdown.previewScripts[0];
+  const script = manifest.contributes['markdown.previewScripts'][0];
   const menuItems = manifest.contributes.menus['webview/context'];
   const expectedCommands = [
     'agentRef.copySend',

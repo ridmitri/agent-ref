@@ -5,13 +5,26 @@ const { test } = require('node:test');
 
 function activateHarness({
   preview = false,
+  activeTabViewType = preview ? 'vscode.markdown.preview.editor' : 'textEditor',
+  activeTabInput = undefined,
   editor = undefined,
   configuration = {},
-  writeClipboard = async () => {}
+  writeClipboard = async () => {},
+  previewClipboardSelection = 'selected preview text',
+  switchPreviewDuringFocus = false
 } = {}) {
   const handlers = new Map();
   const calls = [];
   const clipboardAccess = [];
+  let clipboardText = 'previous clipboard';
+  let activeTab = {
+    input: activeTabInput || {
+      viewType: activeTabViewType,
+      ...(activeTabViewType === 'vscode.markdown.preview.editor'
+        ? { uri: { fsPath: '/workspace/research.md' } }
+        : {})
+    }
+  };
   const mockVscode = {
     Disposable: class {
       constructor(callback) { this.dispose = callback; }
@@ -23,6 +36,13 @@ function activateHarness({
       },
       executeCommand(...args) {
         calls.push(['executeCommand', ...args]);
+        if (args[0] === 'workbench.action.focusActiveEditorGroup' && switchPreviewDuringFocus) {
+          activeTab = { input: { viewType: 'textEditor' } };
+        }
+        if (args[0] === 'editor.action.clipboardCopyAction' && previewClipboardSelection !== undefined) {
+          clipboardText = previewClipboardSelection;
+        }
+        if (args[0] === 'markdown.showSource') return Promise.resolve(sourceEditor());
         return Promise.resolve();
       }
     },
@@ -30,11 +50,12 @@ function activateHarness({
       clipboard: {
         async readText() {
           clipboardAccess.push(['read']);
-          return 'previous clipboard';
+          return clipboardText;
         },
         async writeText(text) {
           clipboardAccess.push(['write', text]);
           calls.push(['clipboardWrite', text]);
+          clipboardText = text;
           await writeClipboard(text);
         }
       }
@@ -43,9 +64,7 @@ function activateHarness({
       activeTextEditor: editor,
       tabGroups: {
         activeTabGroup: {
-          activeTab: {
-            input: { viewType: preview ? 'markdown.preview' : 'textEditor' }
-          }
+          get activeTab() { return activeTab; }
         }
       },
       activeTerminal: {
@@ -80,36 +99,6 @@ function activateHarness({
   }
   Module._load = function load(request, parent, isMain) {
     if (request === 'vscode') return mockVscode;
-    if (request === './preview-selection' && parent?.filename.endsWith('/out/extension.js')) {
-      return {
-        isActiveMarkdownPreview: () => preview,
-        parsePreviewSelectionArgument(argument) {
-          if (!argument || typeof argument !== 'object' || Array.isArray(argument)) {
-            return { kind: 'not-preview' };
-          }
-          const claimsAgentRefContext = [
-            'agentRefPreviewContextVersion',
-            'agentRefHasPreviewSelection',
-            'agentRefPreviewSelection'
-          ].some((key) => Object.hasOwn(argument, key));
-          if (argument.webview !== 'markdown.preview') {
-            return claimsAgentRefContext
-              ? { kind: 'invalid-preview-context' }
-              : { kind: 'not-preview' };
-          }
-          const text = argument.agentRefPreviewSelection;
-          if (
-            argument.agentRefPreviewContextVersion !== 1 ||
-            argument.agentRefHasPreviewSelection !== true ||
-            typeof text !== 'string' ||
-            text.length === 0
-          ) {
-            return { kind: 'invalid-preview-context' };
-          }
-          return { kind: 'selection', text };
-        }
-      };
-    }
     return originalLoad.call(this, request, parent, isMain);
   };
 
@@ -126,7 +115,7 @@ function activateHarness({
 
 function sourceEditor() {
   return {
-    document: { uri: { fsPath: '/workspace/notes.md' } },
+    document: { getText: () => '', uri: { fsPath: '/workspace/notes.md' }, languageId: 'markdown' },
     selection: {
       start: { line: 2, character: 4 },
       end: { line: 4, character: 0 }
@@ -143,7 +132,7 @@ function previewArgument(text = 'selected preview text') {
   };
 }
 
-test('all three commands use the exact preview argument ahead of a visible editor', async () => {
+test('all three commands deliver the exact selection with no active editor', async () => {
   const selectedText = '  exact selection\nwith emoji 🧪  ';
   const cases = [
     { id: 'agentRef.copySend', copies: true, sends: true },
@@ -152,36 +141,69 @@ test('all three commands use the exact preview argument ahead of a visible edito
   ];
 
   for (const { id, copies, sends } of cases) {
-    const harness = activateHarness({ editor: sourceEditor() });
+    const harness = activateHarness({ preview: true });
     await harness.handlers.get(id)(previewArgument(selectedText));
 
     assert.deepEqual(
       harness.clipboardAccess,
-      copies ? [['write', selectedText]] : []
+      copies ? [['write', `/workspace/research.md:<selected_text>${selectedText}</selected_text>`]] : []
     );
     assert.equal(harness.calls.some(([kind, text]) =>
-      kind === 'sendText' && text === selectedText
+      kind === 'sendText' && text === `/workspace/research.md:<selected_text>${selectedText}</selected_text>`
     ), sends);
     assert.equal(harness.calls.some(([kind]) => kind === 'information'), false);
     assert.equal(harness.calls.some(([kind]) => kind === 'status'), copies || sends);
   }
 });
 
-test('active preview without a command context gives right-click guidance and has no side effects', async () => {
-  const harness = activateHarness({ preview: true, editor: sourceEditor() });
+test('palette and shortcut invocations copy selected text from active preview and include its file path', async () => {
+  const harness = activateHarness({ preview: true });
+  await harness.handlers.get('agentRef.sendOnly')();
+
+  const payload = "/workspace/research.md:<selected_text>selected preview text</selected_text>";
+  assert.ok(harness.calls.some(([kind, text]) => kind === 'sendText' && text === payload));
+  assert.ok(harness.calls.some(([kind, command]) =>
+    kind === 'executeCommand' && command === 'editor.action.clipboardCopyAction'
+  ));
+  assert.equal(harness.clipboardAccess.filter(([kind]) => kind === 'write').length, 2);
+  assert.equal(harness.clipboardAccess.at(-1)[1], 'previous clipboard');
+});
+
+test('empty preview clipboard selection gives guidance and has no side effects', async () => {
+  const harness = activateHarness({ preview: true, previewClipboardSelection: '' });
 
   await harness.handlers.get('agentRef.copySend')();
 
-  assert.deepEqual(harness.clipboardAccess, []);
   assert.equal(harness.calls.some(([kind]) => kind === 'sendText'), false);
-  assert.equal(harness.calls.some(([kind]) => kind === 'clipboardWrite'), false);
-  assert.ok(harness.calls.some(([kind, message]) =>
-    kind === 'information' && /select it, right-click in the preview/i.test(message)
-  ));
+  assert.equal(harness.calls.some(([kind, message]) => kind === 'information' && /No text is selected/.test(message)), true);
+});
+
+test('does not send clipboard text if the active preview changes before copy', async () => {
+  const harness = activateHarness({ preview: true, switchPreviewDuringFocus: true });
+  await harness.handlers.get('agentRef.sendOnly')();
+
+  assert.equal(harness.calls.some(([kind]) => kind === 'sendText'), false);
+  assert.equal(harness.clipboardAccess.at(-1)[1], 'previous clipboard');
+  assert.ok(harness.calls.some(([kind, message]) => kind === 'information' &&
+    /active Markdown preview changed/.test(message)));
+});
+
+test('both active legacy preview tab forms are detected without a source editor', async () => {
+  for (const activeTabViewType of [
+    'markdown.preview',
+    'mainThreadWebview-markdown.preview'
+  ]) {
+    const harness = activateHarness({ activeTabViewType, previewClipboardSelection: 'legacy selected text' });
+
+    await harness.handlers.get('agentRef.copySend')();
+
+    assert.ok(harness.calls.some(([kind, text]) => kind === 'sendText' &&
+      text === "/workspace/notes.md:<selected_text>legacy selected text</selected_text>"));
+  }
 });
 
 test('malformed preview context is rejected without falling back to a visible editor', async () => {
-  const harness = activateHarness({ editor: sourceEditor() });
+  const harness = activateHarness({ preview: true, editor: sourceEditor() });
   const malformed = {
     webview: 'markdown.preview',
     agentRefPreviewContextVersion: 1,
@@ -195,6 +217,31 @@ test('malformed preview context is rejected without falling back to a visible ed
   assert.equal(harness.calls.some(([kind]) => kind === 'sendText'), false);
   assert.equal(harness.calls.some(([kind]) => kind === 'clipboardWrite'), false);
   assert.ok(harness.calls.some(([kind]) => kind === 'information'));
+});
+
+test('empty preview context is rejected without falling back to a visible editor', async () => {
+  const harness = activateHarness({ preview: true, editor: sourceEditor() });
+
+  await harness.handlers.get('agentRef.copySend')({
+    ...previewArgument(''),
+    agentRefHasPreviewSelection: false
+  });
+
+  assert.deepEqual(harness.clipboardAccess, []);
+  assert.equal(harness.calls.some(([kind]) => kind === 'sendText'), false);
+  assert.equal(harness.calls.some(([kind]) => kind === 'clipboardWrite'), false);
+});
+
+test('valid preview context takes precedence over a visible source editor', async () => {
+  const harness = activateHarness({ preview: true, editor: sourceEditor() });
+  const selectedText = 'preview selection';
+
+  await harness.handlers.get('agentRef.sendOnly')(previewArgument(selectedText));
+
+  assert.deepEqual(harness.clipboardAccess, []);
+  assert.ok(harness.calls.some(([kind, text]) => kind === 'sendText' &&
+    text === `/workspace/research.md:<selected_text>${selectedText}</selected_text>`));
+  assert.equal(harness.calls.some(([kind, text]) => kind === 'sendText' && text.includes('/workspace/notes.md')), false);
 });
 
 test('invalid namespaced preview context is rejected even when the preview is not active', async () => {
@@ -211,29 +258,31 @@ test('invalid namespaced preview context is rejected even when the preview is no
 
 test('copy and terminal settings apply to preview payloads', async () => {
   const clipboardDisabled = activateHarness({
+    preview: true,
     configuration: { copyToClipboard: false }
   });
   await clipboardDisabled.handlers.get('agentRef.copySend')(previewArgument());
   assert.deepEqual(clipboardDisabled.clipboardAccess, []);
   assert.ok(clipboardDisabled.calls.some(([kind, text]) =>
-    kind === 'sendText' && text === 'selected preview text'
+    kind === 'sendText' && text === "/workspace/research.md:<selected_text>selected preview text</selected_text>"
   ));
   assert.deepEqual(
     clipboardDisabled.calls.find(([kind]) => kind === 'status'),
-    ['status', 'sent to terminal: selected preview text', 3000]
+    ['status', "sent to terminal: /workspace/research.md:<selected_text>selected preview text</selected_text>", 3000]
   );
 
   const terminalDisabled = activateHarness({
+    preview: true,
     configuration: { 'terminal.send': false }
   });
   await terminalDisabled.handlers.get('agentRef.copySend')(previewArgument());
   assert.deepEqual(terminalDisabled.clipboardAccess, [
-    ['write', 'selected preview text']
+    ['write', "/workspace/research.md:<selected_text>selected preview text</selected_text>"]
   ]);
   assert.equal(terminalDisabled.calls.some(([kind]) => kind === 'sendText'), false);
   assert.deepEqual(
     terminalDisabled.calls.find(([kind]) => kind === 'status'),
-    ['status', 'Copied: selected preview text', 3000]
+    ['status', "Copied: /workspace/research.md:<selected_text>selected preview text</selected_text>", 3000]
   );
 });
 
@@ -307,12 +356,25 @@ test('clipboard write failure is reported without delivery or success status', a
 
 test('preview clipboard write failure does not send selected text', async () => {
   const harness = activateHarness({
+    preview: true,
     writeClipboard: async () => { throw new Error('clipboard unavailable'); }
   });
 
   await harness.handlers.get('agentRef.copySend')(previewArgument());
 
-  assert.deepEqual(harness.clipboardAccess, [['write', 'selected preview text']]);
+  assert.deepEqual(harness.clipboardAccess, [[
+    'write', "/workspace/research.md:<selected_text>selected preview text</selected_text>"
+  ]]);
   assert.equal(harness.calls.some(([kind]) => kind === 'sendText'), false);
   assert.equal(harness.calls.some(([kind]) => kind === 'status'), false);
+});
+
+test('source editor selected text uses absolute path and selected_text tags', async () => {
+  const editor = sourceEditor();
+  editor.document.uri.fsPath = '/Users/dryzhov/work/fe/conmon/.work/DP-20234_custom_point_elements/.meta.DP-20234_custom_point_elements.yml';
+  editor.document.getText = () => 'projectPath';
+  const harness = activateHarness({ editor });
+  await harness.handlers.get('agentRef.sendOnly')();
+  assert.ok(harness.calls.some(([kind, text]) => kind === 'sendText' &&
+    text === editor.document.uri.fsPath + ':<selected_text>projectPath</selected_text>'));
 });

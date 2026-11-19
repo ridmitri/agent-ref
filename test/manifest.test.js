@@ -76,3 +76,20 @@ test('contributes active-file terminal-title command and global keybinding', () 
   assert.equal(keybinding.mac, 'cmd+ctrl+t');
   assert.equal(keybinding.when, undefined);
 });
+
+test('registers the preview selection script through the dotted Markdown contribution key', () => {
+  assert.deepEqual(manifest.contributes['markdown.previewScripts'], [
+    './media/preview-selection.js'
+  ]);
+  assert.equal(manifest.contributes.markdown, undefined);
+});
+
+test('enables the existing send-only shortcut in the built-in Markdown preview', () => {
+  const keybinding = manifest.contributes.keybindings.find(
+    (item) => item.command === 'agentRef.sendOnly'
+  );
+  assert.ok(keybinding);
+  assert.match(keybinding.when, /editorTextFocus/);
+  assert.match(keybinding.when, /activeCustomEditorId == 'vscode\.markdown\.preview\.editor'/);
+  assert.match(keybinding.when, /webviewId == 'markdown\.preview'/);
+});
