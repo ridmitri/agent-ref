@@ -6,7 +6,8 @@ export const SET_TERMINAL_TITLE_COMMAND =
 
 /**
  * Rename only the active terminal to the selected local file basename, or the
- * active editor basename when invoked without an Explorer URI.
+ * active editor basename when invoked without an Explorer URI. Task metadata
+ * basenames use the inner filename; other basenames retain their extensions.
  */
 export async function setTerminalTitleFromActiveFile(
   selectedUri?: vscode.Uri
@@ -44,6 +45,10 @@ export async function setTerminalTitleFromActiveFile(
       return;
     }
     name = path.basename(document.fileName);
+  }
+
+  if (name.startsWith('.meta.') && name.endsWith('.yml')) {
+    name = name.slice('.meta.'.length, -'.yml'.length);
   }
 
   const terminal = vscode.window.activeTerminal;

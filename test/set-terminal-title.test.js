@@ -81,6 +81,65 @@ test('renames active terminal to the active saved local file basename including 
   assert.deepEqual(harness.errorMessages, []);
 });
 
+test('uses the selected Explorer metadata basename instead of a different active editor', async () => {
+  const harness = createHarness();
+
+  await harness.setTerminalTitleFromActiveFile({
+    scheme: 'file',
+    fsPath: '/workspace/.meta.report.v2.yml'
+  });
+
+  assert.deepEqual(harness.commandCalls, [
+    ['workbench.action.terminal.renameWithArg', { name: 'report.v2' }]
+  ]);
+  assert.equal(harness.terminal.name, 'report.v2');
+  assert.deepEqual(harness.informationMessages, []);
+  assert.deepEqual(harness.errorMessages, []);
+});
+
+test('renames an active metadata file to its inner filename', async () => {
+  const harness = createHarness({
+    editor: {
+      document: {
+        fileName: '/workspace/.meta.DP-2044_fe_input.yml',
+        isUntitled: false,
+        uri: { scheme: 'file' }
+      }
+    }
+  });
+
+  await harness.setTerminalTitleFromActiveFile();
+
+  assert.deepEqual(harness.commandCalls, [
+    ['workbench.action.terminal.renameWithArg', { name: 'DP-2044_fe_input' }]
+  ]);
+  assert.equal(harness.terminal.name, 'DP-2044_fe_input');
+  assert.deepEqual(harness.informationMessages, []);
+  assert.deepEqual(harness.errorMessages, []);
+});
+
+for (const filePath of [
+  '/workspace/.meta.task.yaml',
+  '/workspace/meta.task.yml',
+  '/workspace/.meta.task.yml.bak',
+  '/workspace/.META.task.yml',
+  '/workspace/.meta.parent.yml/ordinary-file.yml'
+]) {
+  test(`preserves the basename and extension for non-metadata path ${filePath}`, async () => {
+    const harness = createHarness();
+    const basename = filePath.split('/').pop();
+
+    await harness.setTerminalTitleFromActiveFile({ scheme: 'file', fsPath: filePath });
+
+    assert.deepEqual(harness.commandCalls, [
+      ['workbench.action.terminal.renameWithArg', { name: basename }]
+    ]);
+    assert.equal(harness.terminal.name, basename);
+    assert.deepEqual(harness.informationMessages, []);
+    assert.deepEqual(harness.errorMessages, []);
+  });
+}
+
 test('uses the selected Explorer URI instead of a different active editor', async () => {
   const harness = createHarness();
 
