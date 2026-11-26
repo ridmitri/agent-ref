@@ -234,7 +234,7 @@
     "typecheck": "tsc --noEmit -p ./"
   },
   "devDependencies": {
-    "@types/node": "^18.19.130",
+    "@types/node": "^26.0.0",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
